@@ -15,13 +15,22 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 - Add **Create folder** to the notes browsing page's pulley menu.
 - Add a note & folder item context menu with **Delete** (remorse timer), **Copy**, **rename** and **Move**.
 
+### 1.b Notes list polish
+
+- Add type-specific Sailfish icons in `NotesPage`: `icon-m-file-folder` for non-empty folders, `icon-m-folder` for empty folders, `icon-m-file-note` for Markdown, `icon-m-file-document` for `.txt`, `icon-m-file-image` for common image formats, `icon-m-file-pdf` for PDFs, `icon-m-file-formatted` for word-processing documents, `icon-m-file-presentation` for presentations, and the matching archive/audio/video/spreadsheet icons where applicable. Use `icon-m-file-other` as the fallback. Remove the trailing `/` from folder names once the folder icon is present.
+- Have the vault listing classify readable files by extension and report whether each folder contains any visible items, so empty and non-empty folder icons can differ. Keep file opening behavior explicit: Markdown and text open in the editor; other formats can be shown in the list and handed to the system or an appropriate viewer when supported.
+- Add a pulldown toggle for unsupported files, hidden by default: show **Show unsupported files** while hidden and **Hide unsupported files** while shown. Persist the preference if appropriate, and keep folder empty/non-empty status based on its contents even while unsupported files are hidden.
+- Replace free-form destination paths for **Move** and **Copy** with a native folder picker rooted at the current vault. After choosing a destination folder, let the user confirm or edit the item's name; show the resulting destination path before applying the action.
+- Keep **Create note** and **Create folder** anchored to the current folder, with a name field as the primary input. Do not open the folder picker by default: users are already browsing the target location. If creation needs a different location, offer an explicit “Choose location” action that uses the same vault-scoped picker.
+- Keep picker destinations relative to the vault and prevent moving a folder into itself or one of its descendants. Refresh the visible folder after a successful action and navigate to the new location only when appropriate.
+
 ## 2. Protect notes changed elsewhere
 
 - Detect when a note changes on another device while it is open.
 - Before saving over a changed file, offer a safe choice such as reload or save the current text as a separate copy.
 - Never silently overwrite the newer synced version.
 
-## 3. Let the user choose the vault in QML
+## 3. Let the user choose the vault in QML (implemented in source; verify on device)
 
 - Add a native QML folder-selection flow for an existing, locally synced vault.
 - Store the chosen folder and use it for browsing, search, reading, and saving instead of assuming `~/Documents/Obsidian/`.
@@ -80,10 +89,11 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 - First identify specific plugin behaviors that matter in the user's vault, then consider implementing those behaviors natively or through a focused compatibility layer.
 - Revisit a broader plugin strategy only after browsing, editing, search, and sync-conflict handling are reliable.
 
-## 13. Add a settings page
+## 13. Add a settings page (implemented in source; verify on device)
 
 - Provide a native settings page reachable from the main navigation.
-- Put app preferences and vault-related options there as they are introduced.
+- Choose the vault folder with the Sailfish folder picker.
+- Configure automatic note saving and its delay.
 
 ## 14. Make the app cover useful (implemented in source; verify on device)
 

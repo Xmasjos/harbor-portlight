@@ -14,6 +14,16 @@ Page {
         return slash < 0 ? "" : path.substring(0, slash)
     }
 
+    function saveNote(automatic) {
+        var result = vault.writeNote(page.notePath, editor.text)
+        if (result.ok) {
+            page.savedContent = editor.text
+            page.saveStatus = automatic ? "Saved automatically" : "Saved"
+        } else {
+            page.saveStatus = "Save failed: " + result.error
+        }
+    }
+
     onVisibleChanged: {
         if (visible && applicationWindow) {
             applicationWindow.currentNote = notePath
@@ -34,15 +44,12 @@ Page {
         PullDownMenu {
             MenuItem {
                 text: "Save"
-                onClicked: {
-                    var result = vault.writeNote(page.notePath, editor.text)
-                    if (result.ok) {
-                        page.savedContent = editor.text
-                        page.saveStatus = "Saved"
-                    } else {
-                        page.saveStatus = "Save failed: " + result.error
-                    }
-                }
+                visible: editor.text !== page.savedContent
+                onClicked: page.saveNote(false)
+            }
+            MenuLabel {
+                text: "Saved"
+                visible: editor.text === page.savedContent
             }
         }
 
@@ -58,13 +65,38 @@ Page {
                 placeholderText: "Markdown note"
                 label: "Note"
                 height: Math.max(page.height - Theme.itemSizeLarge * 2, implicitHeight)
+                onTextChanged: {
+                    if (vault.autoSave && text !== page.savedContent) autoSaveTimer.restart()
+                    else autoSaveTimer.stop()
+                }
             }
             Label {
                 x: Theme.horizontalPageMargin
-                text: editor.text === page.savedContent ? page.saveStatus : "Unsaved changes"
+                text: editor.text === page.savedContent ? page.saveStatus
+                                                        : (vault.autoSave ? "Saving…" : "Unsaved changes")
                 color: Theme.secondaryColor
             }
         }
         VerticalScrollDecorator {}
+    }
+
+    Timer {
+        id: autoSaveTimer
+        interval: vault.saveDelay
+        repeat: false
+        onTriggered: {
+            if (vault.autoSave && editor.text !== page.savedContent) page.saveNote(true)
+        }
+    }
+
+    Connections {
+        target: vault
+        onAutoSaveChanged: {
+            if (vault.autoSave && editor.text !== page.savedContent) autoSaveTimer.restart()
+            else autoSaveTimer.stop()
+        }
+        onSaveDelayChanged: {
+            if (autoSaveTimer.running) autoSaveTimer.restart()
+        }
     }
 }

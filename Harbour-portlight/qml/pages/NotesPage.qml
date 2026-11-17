@@ -59,11 +59,12 @@ Page {
         var entries = []
         for (var i = 0; i < result.entries.length; i++) {
             var entry = result.entries[i]
+            if (entry.type === "unsupported" && !vault.showUnsupportedFiles) continue
             entry.excerpt = entry.excerpt || ""
             entries.push(entry)
         }
         updateNotes(entries, resetPosition)
-        scanStatus = result.entries.length + " items"
+        scanStatus = entries.length + " items"
     }
 
     function openNote(path) {
@@ -112,11 +113,41 @@ Page {
         else scanStatus = result.error
     }
 
+    function iconForEntry(entry) {
+        if (entry.type === "folder") return entry.hasItems ? "icon-m-file-folder" : "icon-m-folder"
+        var extension = entry.name.substring(entry.name.lastIndexOf(".") + 1).toLowerCase()
+        if (extension === "md" || extension === "markdown") return "icon-m-file-note"
+        if (["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg", "heic", "tif", "tiff"].indexOf(extension) >= 0)
+            return "icon-m-file-image"
+        if (extension === "pdf") return "icon-m-file-pdf"
+        if (["doc", "docx", "odt", "rtf"].indexOf(extension) >= 0) return "icon-m-file-formatted"
+        if (["ppt", "pptx", "odp", "key"].indexOf(extension) >= 0) return "icon-m-file-presentation"
+        if (["xls", "xlsx", "ods", "csv"].indexOf(extension) >= 0) return "icon-m-file-spreadsheet"
+        if (["zip", "gz", "bz2", "xz", "7z", "rar", "tar"].indexOf(extension) >= 0)
+            return "icon-m-file-compressed"
+        if (["mp3", "wav", "ogg", "flac", "m4a", "aac"].indexOf(extension) >= 0)
+            return "icon-m-file-audio"
+        if (["mp4", "mkv", "avi", "mov", "webm", "m4v"].indexOf(extension) >= 0)
+            return "icon-m-file-video"
+        return entry.type === "note" ? "icon-m-file-document" : "icon-m-file-other"
+    }
+
     SilicaListView {
         id: listView
         anchors.fill: parent
         model: notesModel
         PullDownMenu {
+            MenuItem {
+                text: vault.showUnsupportedFiles ? "Hide unsupported files" : "Show unsupported files"
+                onClicked: {
+                    vault.showUnsupportedFiles = !vault.showUnsupportedFiles
+                    if (!page.searchQuery.trim().length) page.refreshFolder(true)
+                }
+            }
+            MenuItem {
+                text: "Settings"
+                onClicked: pageStack.push(Qt.resolvedUrl("SettingsPage.qml"))
+            }
             MenuItem {
                 text: "Create folder"
                 onClicked: page.askPath("New folder", "", "Folder name or vault path", function(name, dialog) {
@@ -143,6 +174,7 @@ Page {
                 description: page.currentFolder.length ? page.currentFolder : "Vault root"
             }
             SearchField {
+                id: searchField
                 width: parent.width
                 placeholderText: "Search notes"
                 onTextChanged: {
@@ -161,7 +193,7 @@ Page {
         }
         delegate: ListItem {
             id: noteDelegate
-            property var entry: ({ type: type, name: name, path: path, excerpt: excerpt })
+            property var entry: ({ type: type, name: name, path: path, excerpt: excerpt, hasItems: hasItems })
             width: listView.width
             contentHeight: resultColumn.height + 2 * Theme.paddingMedium
             menu: ContextMenu {
@@ -232,13 +264,12 @@ Page {
 
             Column {
                 id: resultColumn
-                x: Theme.horizontalPageMargin
-                width: parent.width - 2 * Theme.horizontalPageMargin
+                x: Theme.horizontalPageMargin + itemIcon.width + Theme.paddingMedium
+                width: parent.width - x - Theme.horizontalPageMargin
                 anchors.verticalCenter: parent.verticalCenter
                 Label {
                     width: parent.width
-                    text: type === "folder" ? name + "/"
-                          : page.searchQuery.trim().length ? path : name
+                    text: page.searchQuery.trim().length ? path : name
                     truncationMode: TruncationMode.Fade
                     color: noteDelegate.highlighted ? Theme.highlightColor : Theme.primaryColor
                 }
@@ -252,14 +283,26 @@ Page {
                 }
             }
 
+            Image {
+                id: itemIcon
+                x: Theme.horizontalPageMargin
+                anchors.verticalCenter: parent.verticalCenter
+                width: Theme.iconSizeMedium
+                height: Theme.iconSizeMedium
+                source: "image://theme/" + page.iconForEntry(noteDelegate.entry)
+                        + "?" + (noteDelegate.highlighted ? Theme.highlightColor : Theme.primaryColor)
+            }
+
             onClicked: {
                 if (type === "folder") {
                     pageStack.animatorPush(Qt.resolvedUrl("NotesPage.qml"), {
                         currentFolder: path,
                         applicationWindow: page.applicationWindow
                     })
-                } else {
+                } else if (type === "note") {
                     openNote(path)
+                } else {
+                    page.scanStatus = "Unsupported file type"
                 }
             }
         }
@@ -365,6 +408,7 @@ Page {
                 applicationWindow.currentNote = ""
             }
             vault.watchFolder(currentFolder)
+            refreshFolder(true)
         }
     }
 
@@ -374,6 +418,11 @@ Page {
 
     Connections {
         target: vault
+        onVaultPathChanged: {
+            page.currentFolder = ""
+            searchField.text = ""
+            if (page.visible) page.refreshFolder(true)
+        }
         onFolderChanged: {
             if (page.searchQuery.trim().length) searchTimer.restart()
             else page.refreshFolder()
