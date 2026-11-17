@@ -13,7 +13,7 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 
 - Add **Create new note** to the notes browsing page's pulley menu.
 - Add **Create folder** to the notes browsing page's pulley menu.
-- Add a note item context menu with **Delete** (remorse timer), **Copy**, and **Move**.
+- Add a note & folder item context menu with **Delete** (remorse timer), **Copy**, **rename** and **Move**.
 
 ## 2. Protect notes changed elsewhere
 
@@ -85,7 +85,7 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 - Provide a native settings page reachable from the main navigation.
 - Put app preferences and vault-related options there as they are introduced.
 
-## 14. Make the app cover useful
+## 14. Make the app cover useful (implemented in source; verify on device)
 
 - Show the currently open note or folder on the cover.
 - Add a cover action to create a note in that current location.

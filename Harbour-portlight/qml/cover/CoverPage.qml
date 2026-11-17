@@ -2,21 +2,26 @@ import QtQuick 2.0
 import Sailfish.Silica 1.0
 
 CoverBackground {
+    property string locationText: "Vault root"
+    signal createNoteRequested()
+
     Label {
-        id: label
         anchors.centerIn: parent
-        text: qsTr("My Cover")
+        width: parent.width - 2 * Theme.horizontalPageMargin
+        x: Theme.horizontalPageMargin
+        horizontalAlignment: Text.AlignHCenter
+        text: locationText
+        maximumLineCount: 3
+        wrapMode: Text.Wrap
+        truncationMode: TruncationMode.Fade
     }
 
     CoverActionList {
         id: coverAction
 
         CoverAction {
-            iconSource: "image://theme/icon-cover-next"
-        }
-
-        CoverAction {
-            iconSource: "image://theme/icon-cover-pause"
+            iconSource: "image://theme/icon-cover-new"
+            onTriggered: createNoteRequested()
         }
     }
 }
