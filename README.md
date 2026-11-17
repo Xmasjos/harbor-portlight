@@ -1,5 +1,13 @@
 # Portlight
 
+<p align="center">
+  <img src="Harbour-portlight/assets/portlight.svg" alt="Portlight app icon" width="160">
+</p>
+
+<p align="center"><strong>A native SailfishOS companion for your Obsidian vault.</strong></p>
+
+> **Unofficial:** Portlight is an independent project and is not affiliated with, endorsed by, or associated with Obsidian or its developers.
+
 Portlight is a lightweight, native SailfishOS app for viewing, editing, and searching an existing Obsidian vault on a Sailfish phone. The first goal is deliberately modest: make ordinary Markdown notes useful on-device while keeping the vault's Markdown files and attachments as the shared source of truth.
 
 Obsidian remains the main desktop and LLM workflow. This project aims for compatibility with the vault's files and common Markdown conventions, not compatibility with Obsidian's application runtime or its plugins.
