@@ -163,6 +163,21 @@ Page {
             contentHeight: resultColumn.height + 2 * Theme.paddingMedium
             menu: ContextMenu {
                 MenuItem {
+                    text: "Rename"
+                    onClicked: {
+                        var sourcePath = noteDelegate.entry.path
+                        var isFolder = noteDelegate.entry.type === "folder"
+                        page.askPath(isFolder ? "Rename folder" : "Rename note", sourcePath,
+                                     "Name and extension", function(path, dialog) {
+                            var result = isFolder ? vault.moveFolder(sourcePath, path)
+                                                  : vault.moveNote(sourcePath, path)
+                            if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
+                            else dialog.returnToSource(result.error)
+                        }, Qt.resolvedUrl("NotesPage.qml"), "destination",
+                        { currentFolder: page.parentFolder(sourcePath) })
+                    }
+                }
+                MenuItem {
                     text: "Copy"
                     onClicked: {
                         var sourcePath = noteDelegate.entry.path
