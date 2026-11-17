@@ -23,6 +23,7 @@ DISTFILES += qml/Harbour-portlight.qml \
     qml/cover/CoverPage.qml \
     qml/pages/NotesPage.qml \
     qml/pages/NotePage.qml \
+    qml/pages/SettingsPage.qml \
     rpm/Harbour-portlight.changes.in \
     rpm/Harbour-portlight.changes.run.in \
     rpm/Harbour-portlight.spec \

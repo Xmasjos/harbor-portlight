@@ -7,6 +7,7 @@
 #include <QMimeDatabase>
 #include <QMimeType>
 #include <QSaveFile>
+#include <QSettings>
 #include <QVariantList>
 
 namespace {
@@ -97,10 +98,72 @@ bool copyDirectory(const QString &source, const QString &destination)
 
 VaultBackend::VaultBackend(QObject *parent)
     : QObject(parent),
-      m_vaultPath(QDir::home().filePath(QStringLiteral("Documents/Obsidian")))
+      m_vaultPath(QSettings().value(QStringLiteral("vaultPath"),
+                                     QDir::home().filePath(QStringLiteral("Documents/Obsidian"))).toString())
 {
     connect(&m_watcher, &QFileSystemWatcher::directoryChanged,
             this, &VaultBackend::folderChanged);
+}
+
+QString VaultBackend::vaultPath() const
+{
+    return m_vaultPath;
+}
+
+bool VaultBackend::autoSave() const
+{
+    return QSettings().value(QStringLiteral("autoSave"), false).toBool();
+}
+
+void VaultBackend::setAutoSave(bool enabled)
+{
+    if (autoSave() == enabled) return;
+    QSettings().setValue(QStringLiteral("autoSave"), enabled);
+    emit autoSaveChanged();
+}
+
+int VaultBackend::saveDelay() const
+{
+    return QSettings().value(QStringLiteral("saveDelayMs"), 3000).toInt();
+}
+
+void VaultBackend::setSaveDelay(int delayMs)
+{
+    static const int delays[] = {0, 300, 500, 1000, 2000, 3000, 5000, 10000, 20000, 30000};
+    int nearest = delays[0];
+    for (unsigned int i = 1; i < sizeof(delays) / sizeof(delays[0]); ++i) {
+        if (qAbs(delays[i] - delayMs) < qAbs(nearest - delayMs)) nearest = delays[i];
+    }
+    if (saveDelay() == nearest) return;
+    QSettings().setValue(QStringLiteral("saveDelayMs"), nearest);
+    emit saveDelayChanged();
+}
+
+bool VaultBackend::showUnsupportedFiles() const
+{
+    return QSettings().value(QStringLiteral("showUnsupportedFiles"), false).toBool();
+}
+
+void VaultBackend::setShowUnsupportedFiles(bool show)
+{
+    if (showUnsupportedFiles() == show) return;
+    QSettings().setValue(QStringLiteral("showUnsupportedFiles"), show);
+    emit showUnsupportedFilesChanged();
+}
+
+bool VaultBackend::setVaultPath(const QString &path)
+{
+    const QString canonicalPath = QFileInfo(path).canonicalFilePath();
+    if (canonicalPath.isEmpty() || !QFileInfo(canonicalPath).isDir()
+            || !QFileInfo(canonicalPath).isReadable()) {
+        return false;
+    }
+    if (m_vaultPath == canonicalPath) return true;
+    m_vaultPath = canonicalPath;
+    QSettings().setValue(QStringLiteral("vaultPath"), m_vaultPath);
+    emit vaultPathChanged();
+    emit folderChanged();
+    return true;
 }
 
 void VaultBackend::watchFolder(const QString &relativeFolder)
@@ -148,8 +211,21 @@ QVariantMap VaultBackend::listVaultEntries(const QString &relativeFolder) const
         if (entry.fileName().compare(QStringLiteral(".obsidian"), Qt::CaseInsensitive) == 0) {
             continue;
         }
+        const QDir childFolder(entry.filePath());
+        const QFileInfoList childFolders = childFolder.entryInfoList(
+                QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable | QDir::NoSymLinks);
+        const QFileInfoList childFiles = childFolder.entryInfoList(
+                QDir::Files | QDir::Readable | QDir::NoSymLinks);
+        bool hasItems = !childFiles.isEmpty();
+        for (const QFileInfo &child : childFolders) {
+            if (child.fileName().compare(QStringLiteral(".obsidian"), Qt::CaseInsensitive) != 0) {
+                hasItems = true;
+                break;
+            }
+        }
         entries.append(QVariantMap{
             {QStringLiteral("type"), QStringLiteral("folder")},
+            {QStringLiteral("hasItems"), hasItems},
             {QStringLiteral("name"), entry.fileName()},
             {QStringLiteral("path"), QDir(root).relativeFilePath(entry.filePath())}
         });
@@ -159,11 +235,10 @@ QVariantMap VaultBackend::listVaultEntries(const QString &relativeFolder) const
             QDir::Files | QDir::Readable | QDir::NoSymLinks, QDir::Name);
     const QMimeDatabase mimeDatabase;
     for (const QFileInfo &entry : files) {
-        if (!isTextNote(entry, mimeDatabase)) {
-            continue;
-        }
+        const bool textNote = isTextNote(entry, mimeDatabase);
         entries.append(QVariantMap{
-            {QStringLiteral("type"), QStringLiteral("note")},
+            {QStringLiteral("type"), textNote ? QStringLiteral("note") : QStringLiteral("unsupported")},
+            {QStringLiteral("hasItems"), false},
             {QStringLiteral("name"), entry.fileName()},
             {QStringLiteral("path"), QDir(root).relativeFilePath(entry.filePath())}
         });
