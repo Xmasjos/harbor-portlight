@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="tile" x1=".12" y1="0" x2=".9" y2="1">
+      <stop offset="0" stop-color="#1b3546"/>
+      <stop offset="1" stop-color="#091521"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d2e5e5"/>
+      <stop offset=".22" stop-color="#748e91"/>
+      <stop offset=".52" stop-color="#263f49"/>
+      <stop offset=".76" stop-color="#a9c4c4"/>
+      <stop offset="1" stop-color="#435f67"/>
+    </linearGradient>
+    <linearGradient id="glass" x1=".12" y1="0" x2=".85" y2="1">
+      <stop offset="0" stop-color="#477d91"/>
+      <stop offset=".42" stop-color="#183b50"/>
+      <stop offset="1" stop-color="#101e31"/>
+    </linearGradient>
+    <linearGradient id="facet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a4e3dc" stop-opacity=".9"/>
+      <stop offset=".45" stop-color="#4ca4ae" stop-opacity=".58"/>
+      <stop offset="1" stop-color="#2b5c78" stop-opacity=".06"/>
+    </linearGradient>
+    <clipPath id="window"><circle cx="256" cy="248" r="153"/></clipPath>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+  </defs>
+  <rect x="12" y="12" width="488" height="488" rx="112" fill="url(#tile)"/>
+  <rect x="12" y="12" width="488" height="488" rx="112" fill="none" stroke="#7896a0" stroke-opacity=".2" stroke-width="2"/>
+  <ellipse cx="256" cy="436" rx="153" ry="24" fill="#000810" opacity=".48" filter="url(#shadow)"/>
+  <circle cx="256" cy="248" r="185" fill="#09121a" opacity=".65"/>
+  <circle cx="256" cy="241" r="180" fill="url(#metal)"/>
+  <circle cx="256" cy="241" r="163" fill="#172b34" stroke="#d4e0d9" stroke-opacity=".62" stroke-width="3"/>
+  <circle cx="256" cy="241" r="153" fill="url(#glass)"/>
+  <g clip-path="url(#window)">
+    <path d="M90 303 174 126 252 88 224 217 317 117 407 163 339 266 423 321 321 383 241 333 163 392Z" fill="url(#facet)" opacity=".66"/>
+    <path d="m174 126 78-38-28 129-79 72Z" fill="#b7eee4" opacity=".23"/>
+    <path d="m252 88 65 29-93 100Z" fill="#95d6d5" opacity=".42"/>
+    <path d="m224 217 93-100 90 46-68 103Z" fill="#70b9c0" opacity=".3"/>
+    <path d="m224 217 115 49 84 55-102 62-80-50-78 59-51-89Z" fill="#122638" opacity=".44"/>
+    <path d="M125 312c55-42 111-49 162-22 34 18 63 22 100 6" fill="none" stroke="#c4f2e7" stroke-opacity=".62" stroke-width="7" stroke-linecap="round"/>
+    <path d="M143 333c58-27 99-28 142-8" fill="none" stroke="#68b7c2" stroke-opacity=".62" stroke-width="4" stroke-linecap="round"/>
+    <path d="m149 156 25-30m137-5 19 9m44 154 28 18" fill="none" stroke="#e3fff4" stroke-opacity=".48" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <circle cx="256" cy="241" r="153" fill="none" stroke="#c5f4ea" stroke-opacity=".55" stroke-width="4"/>
+  <circle cx="256" cy="241" r="170" fill="none" stroke="#f0f4e8" stroke-opacity=".44" stroke-width="3"/>
+  <g fill="#162932" stroke="#bed0c8" stroke-opacity=".8" stroke-width="3">
+    <circle cx="256" cy="77" r="8"/><circle cx="372" cy="125" r="8"/>
+    <circle cx="420" cy="241" r="8"/><circle cx="372" cy="357" r="8"/>
+    <circle cx="256" cy="405" r="8"/><circle cx="140" cy="357" r="8"/>
+    <circle cx="92" cy="241" r="8"/><circle cx="140" cy="125" r="8"/>
+  </g>
+  <path d="M125 193A140 140 0 0 1 208 112" fill="none" stroke="#f5ffff" stroke-opacity=".62" stroke-width="5" stroke-linecap="round"/>
+</svg>
