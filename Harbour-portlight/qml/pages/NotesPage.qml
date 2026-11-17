@@ -76,26 +76,23 @@ Page {
         }
     }
 
-    function askPath(title, initialText, callback) {
-        var dialog = pageStack.push(pathDialog, {
+    function parentFolder(path) {
+        var slash = path.lastIndexOf("/")
+        return slash < 0 ? "" : path.substring(0, slash)
+    }
+
+    function askPath(title, initialText, placeholder, callback, destination, destinationType, properties) {
+        pageStack.push(pathDialog, {
             dialogTitle: title,
-            initialText: initialText
-        })
-        dialog.accepted.connect(function() {
-            var value = dialog.enteredText.trim()
-            if (pageStack.currentPage === dialog) pageStack.pop()
-            if (!value.length) return
-            if (!pageStack.busy) {
-                callback(value)
-                return
-            }
-            var onStackIdle = function() {
-                if (pageStack.busy) return
-                pageStack.busyChanged.disconnect(onStackIdle)
-                callback(value)
-            }
-            pageStack.busyChanged.connect(onStackIdle)
-            onStackIdle()
+            initialText: initialText,
+            pathPlaceholder: placeholder,
+            acceptCallback: callback,
+            sourcePage: page,
+            destinationType: destinationType,
+            acceptDestination: destination,
+            acceptDestinationProperties: properties,
+            acceptDestinationAction: PageStackAction.Replace,
+            acceptDestinationReplaceTarget: page
         })
     }
 
@@ -119,29 +116,21 @@ Page {
         PullDownMenu {
             MenuItem {
                 text: "Create folder"
-                onClicked: page.askPath("New folder", "", function(name) {
+                onClicked: page.askPath("New folder", "", "Folder name or vault path", function(name, dialog) {
                     var path = page.currentFolder.length ? page.currentFolder + "/" + name : name
                     var result = vault.createFolder(path)
-                    if (result.ok) {
-                        page.refreshFolder()
-                        pageStack.animatorPush(Qt.resolvedUrl("NotesPage.qml"), {
-                            currentFolder: path
-                        })
-                    }
-                    else page.scanStatus = result.error
-                })
+                    if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
+                    else dialog.returnToSource(result.error)
+                }, Qt.resolvedUrl("NotesPage.qml"), "folder", { currentFolder: page.currentFolder })
             }
             MenuItem {
                 text: "Create note"
-                onClicked: page.askPath("New note", "", function(name) {
+                onClicked: page.askPath("New note", "", "Note name or vault path", function(name, dialog) {
                     var path = page.notePath(name)
                     var result = vault.createNote(path, "")
-                    if (result.ok) {
-                        page.refreshFolder()
-                        page.openNote(path)
-                    }
-                    else page.scanStatus = result.error
-                })
+                    if (!result.ok) dialog.returnToSource(result.error)
+                }, Qt.resolvedUrl("NotePage.qml"), "note",
+                { notePath: page.notePath(""), noteContent: "" })
             }
         }
         header: Column {
@@ -180,12 +169,14 @@ Page {
                         var isFolder = noteDelegate.entry.type === "folder"
                         var defaultPath = isFolder ? sourcePath + " copy"
                                                     : sourcePath.replace(/\.md$/i, " copy.md")
-                        page.askPath(isFolder ? "Copy folder to" : "Copy note to", defaultPath, function(path) {
+                        page.askPath(isFolder ? "Copy folder to" : "Copy note to", defaultPath,
+                                     "Destination path", function(path, dialog) {
                             var result = isFolder ? vault.copyFolder(sourcePath, path)
                                                   : vault.copyNote(sourcePath, path)
-                            if (result.ok) page.refreshFolder()
-                            else page.scanStatus = result.error
-                        })
+                            if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
+                            else dialog.returnToSource(result.error)
+                        }, Qt.resolvedUrl("NotesPage.qml"), "destination",
+                        { currentFolder: page.parentFolder(defaultPath) })
                     }
                 }
                 MenuItem {
@@ -193,12 +184,14 @@ Page {
                     onClicked: {
                         var sourcePath = noteDelegate.entry.path
                         var isFolder = noteDelegate.entry.type === "folder"
-                        page.askPath(isFolder ? "Move folder to" : "Move note to", sourcePath, function(path) {
+                        page.askPath(isFolder ? "Move folder to" : "Move note to", sourcePath,
+                                     "Destination path", function(path, dialog) {
                             var result = isFolder ? vault.moveFolder(sourcePath, path)
                                                   : vault.moveNote(sourcePath, path)
-                            if (result.ok) page.refreshFolder()
-                            else page.scanStatus = result.error
-                        })
+                            if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
+                            else dialog.returnToSource(result.error)
+                        }, Qt.resolvedUrl("NotesPage.qml"), "destination",
+                        { currentFolder: page.parentFolder(sourcePath) })
                     }
                 }
                 MenuItem {
@@ -286,7 +279,38 @@ Page {
             id: inputDialog
             property string dialogTitle: ""
             property string initialText: ""
+            property string pathPlaceholder: ""
+            property var acceptCallback
+            property var sourcePage
+            property string destinationType: ""
             property alias enteredText: nameField.text
+            canAccept: enteredText.trim().length > 0
+
+            function updateDestination() {
+                var destinationPage = acceptDestinationInstance
+                var value = enteredText.trim()
+                if (!destinationPage || !value.length) return
+                if (destinationType === "note") {
+                    destinationPage.notePath = sourcePage.notePath(value)
+                } else if (destinationType === "folder") {
+                    destinationPage.currentFolder = sourcePage.currentFolder.length
+                            ? sourcePage.currentFolder + "/" + value : value
+                } else if (destinationType === "destination") {
+                    destinationPage.currentFolder = sourcePage.parentFolder(value)
+                }
+            }
+
+            function returnToSource(error) {
+                sourcePage.scanStatus = error
+                acceptDestination = sourcePage
+                acceptDestinationAction = PageStackAction.Pop
+            }
+
+            onAccepted: {
+                var value = enteredText.trim()
+                if (value.length) acceptCallback(value, inputDialog)
+            }
+            onOpened: updateDestination()
 
             Column {
                 width: parent.width
@@ -295,7 +319,8 @@ Page {
                     id: nameField
                     width: parent.width
                     text: inputDialog.initialText
-                    placeholderText: "Name or vault path"
+                    placeholderText: inputDialog.pathPlaceholder
+                    onTextChanged: inputDialog.updateDestination()
                     EnterKey.onClicked: inputDialog.accept()
                 }
             }
