@@ -14,7 +14,7 @@ Page {
         id: notesModel
     }
 
-    function updateNotes(entries) {
+    function updateNotes(entries, resetPosition) {
         for (var i = notesModel.count - 1; i >= 0; i--) {
             var found = -1
             for (var j = 0; j < entries.length; j++) {
@@ -44,12 +44,13 @@ Page {
                 }
             }
         }
+        if (resetPosition) positionResetTimer.restart()
     }
 
-    function refreshFolder() {
+    function refreshFolder(resetPosition) {
         var result = vault.listVaultEntries(currentFolder)
         if (!result.ok) {
-            updateNotes([])
+            updateNotes([], resetPosition)
             scanStatus = result.error
             return
         }
@@ -60,7 +61,7 @@ Page {
             entry.excerpt = entry.excerpt || ""
             entries.push(entry)
         }
-        updateNotes(entries)
+        updateNotes(entries, resetPosition)
         scanStatus = result.entries.length + " items"
     }
 
@@ -263,25 +264,31 @@ Page {
     }
 
     Timer {
+        id: positionResetTimer
+        interval: 1
+        onTriggered: listView.positionViewAtBeginning()
+    }
+
+    Timer {
         id: searchTimer
         interval: 300
         onTriggered: {
             var query = page.searchQuery.trim()
             if (!query.length) {
-                page.refreshFolder()
+                page.refreshFolder(true)
                 return
             }
 
             var result = vault.searchNotes(query)
             if (!result.ok) {
-                page.updateNotes([])
+                page.updateNotes([], true)
                 scanStatus = result.error
                 return
             }
             var matches = result.matches
             for (var i = 0; i < matches.length; i++)
                 matches[i].excerpt = matches[i].excerpt || ""
-            page.updateNotes(matches)
+            page.updateNotes(matches, true)
             scanStatus = result.matches.length
                     ? result.matches.length + " matches across vault"
                     : "No matching notes"
@@ -345,7 +352,7 @@ Page {
     }
 
     Component.onCompleted: {
-        refreshFolder()
+        refreshFolder(true)
         if (visible) vault.watchFolder(currentFolder)
     }
     onVisibleChanged: {
