@@ -1,0 +1,19 @@
+# Qt Creator and qmake
+*.pro.user*
+*.qmake.stash
+Makefile
+moc_*
+qrc_*
+ui_*
+
+# Local build output
+/build*/
+/Harbour-portlight/build*/
+/Harbour-portlight/rpmbuild/
+*.rpm
+
+# Editor and operating system files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
