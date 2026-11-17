@@ -96,6 +96,11 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 - Provide a functional way to save or designate notes as templates and create new notes from them.
 - Make template use distinct from copying an existing note, with a clear place to manage templates.
 
+## 16. Add an About page
+
+- Add an About page reachable from the app navigation.
+- Include the disclaimer that Portlight is independent and is not affiliated with or endorsed by Obsidian or its developers.
+
 ## Inspiration
 
 - Obsidian [Bookmarks](https://help.obsidian.md/plugins/bookmarks) covers quick access to frequently used files, folders, and searches.
