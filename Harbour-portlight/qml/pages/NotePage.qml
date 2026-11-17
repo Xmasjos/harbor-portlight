@@ -7,6 +7,25 @@ Page {
     property string noteContent: ""
     property string savedContent: noteContent
     property string saveStatus: ""
+    property var applicationWindow
+
+    function noteFolder(path) {
+        var slash = path.lastIndexOf("/")
+        return slash < 0 ? "" : path.substring(0, slash)
+    }
+
+    onVisibleChanged: {
+        if (visible && applicationWindow) {
+            applicationWindow.currentNote = notePath
+            applicationWindow.currentFolder = noteFolder(notePath)
+        }
+    }
+    onNotePathChanged: {
+        if (visible && applicationWindow) {
+            applicationWindow.currentNote = notePath
+            applicationWindow.currentFolder = noteFolder(notePath)
+        }
+    }
 
     SilicaFlickable {
         anchors.fill: parent

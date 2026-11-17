@@ -3,6 +3,7 @@ import Sailfish.Silica 1.0
 
 Page {
     id: page
+    property var applicationWindow
     property string currentFolder: ""
     property string scanStatus: "Loading vault…"
     property string searchQuery: ""
@@ -70,7 +71,8 @@ Page {
         if (result.ok) {
             pageStack.push(Qt.resolvedUrl("NotePage.qml"), {
                 notePath: path,
-                noteContent: result.content
+                noteContent: result.content,
+                applicationWindow: page.applicationWindow
             })
         } else {
             scanStatus = result.error
@@ -253,7 +255,8 @@ Page {
             onClicked: {
                 if (type === "folder") {
                     pageStack.animatorPush(Qt.resolvedUrl("NotesPage.qml"), {
-                        currentFolder: path
+                        currentFolder: path,
+                        applicationWindow: page.applicationWindow
                     })
                 } else {
                     openNote(path)
@@ -356,7 +359,17 @@ Page {
         if (visible) vault.watchFolder(currentFolder)
     }
     onVisibleChanged: {
-        if (visible) vault.watchFolder(currentFolder)
+        if (visible) {
+            if (applicationWindow) {
+                applicationWindow.currentFolder = currentFolder
+                applicationWindow.currentNote = ""
+            }
+            vault.watchFolder(currentFolder)
+        }
+    }
+
+    onCurrentFolderChanged: {
+        if (applicationWindow && visible) applicationWindow.currentFolder = currentFolder
     }
 
     Connections {
