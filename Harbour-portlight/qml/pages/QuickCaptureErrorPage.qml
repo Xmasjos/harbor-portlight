@@ -24,10 +24,15 @@ Page {
             Button {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "Settings"
-                onClicked: pageStack.push(Qt.resolvedUrl("SettingsPage.qml"), {
+                onClicked: pageStack.push(settingsPage, {
                     applicationWindow: errorPage.applicationWindow
                 })
             }
         }
+    }
+
+    Component {
+        id: settingsPage
+        SettingsPage {}
     }
 }
