@@ -9,6 +9,7 @@ Page {
     property string savedContent: noteContent
     property string saveStatus: ""
     property var applicationWindow
+    property bool quickCapture: false
 
     function noteFolder(path) {
         var slash = path.lastIndexOf("/")
@@ -58,6 +59,12 @@ Page {
         if (visible && applicationWindow) {
             applicationWindow.currentNote = notePath
             applicationWindow.currentFolder = noteFolder(notePath)
+        }
+    }
+    Component.onDestruction: {
+        if (quickCapture) {
+            var stored = vault.readNote(notePath)
+            if (stored.ok && !stored.content.trim().length) vault.deleteNote(notePath)
         }
     }
 

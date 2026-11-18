@@ -32,6 +32,15 @@ Page {
                 onClicked: pageStack.push(folderPicker)
             }
 
+            SectionHeader { text: "Quick notes" }
+            ValueButton {
+                width: parent.width
+                label: "Save quick notes in"
+                value: settingsPage.applicationWindow.quickNoteFolder.length
+                        ? settingsPage.applicationWindow.quickNoteFolder : "Vault root"
+                onClicked: pageStack.push(quickNoteFolderPicker)
+            }
+
             SectionHeader { text: "Notes" }
             TextSwitch {
                 text: "Save notes automatically"
@@ -72,6 +81,36 @@ Page {
                 } else {
                     settingsPage.applicationWindow.vaultPath = vault.vaultPath
                 }
+            }
+        }
+    }
+
+    Component {
+        id: quickNoteFolderPicker
+        FolderPickerDialog {
+            title: "Choose quick note folder"
+            path: vault.vaultPath
+            onAccepted: {
+                var root = vault.vaultPath
+                var selected = selectedPath.replace(/\/$/, "")
+                if (selected === root) {
+                    settingsPage.applicationWindow.quickNoteFolder = ""
+                    settingsPage.statusText = ""
+                    return
+                }
+                var prefix = root + "/"
+                if (selected.indexOf(prefix) !== 0) {
+                    settingsPage.statusText = "Choose a folder inside the configured vault"
+                    return
+                }
+                var relative = selected.substring(prefix.length).replace(/\/$/, "")
+                var result = vault.listVaultEntries(relative)
+                if (!result.ok) {
+                    settingsPage.statusText = "Choose an accessible folder inside the vault"
+                    return
+                }
+                settingsPage.applicationWindow.quickNoteFolder = relative
+                settingsPage.statusText = ""
             }
         }
     }

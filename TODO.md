@@ -112,7 +112,7 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 - Include the disclaimer that Portlight is independent and is not affiliated with or endorsed by Obsidian or its developers.
 - Start the page with the app name, then the app icon, then the disclaimer, then a short description, then a section for issue reporting with the github repo link
 
-## 17. Capture quick notes
+## 17. Capture quick notes (implemented)
 
 - Provide a quick capture flow for jotting down text without first browsing to or naming a note. Save quick notes in the configured vault folder, chosen through Settings with a folder picker; make the destination visible and handle a missing or unavailable folder clearly. See also [Daily notes](#18-support-daily-notes) for the related date-based note workflow and shared destination-setting behavior.
 - Offer quick-note capture as an optional cover action, alongside the existing action that creates a blank note in the current folder. The quick-note action should open the capture flow and save to its configured destination, regardless of the currently browsed folder.

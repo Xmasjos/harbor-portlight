@@ -25,6 +25,7 @@ DISTFILES += qml/Harbour-portlight.qml \
     qml/pages/NotePage.qml \
     qml/pages/ImagePage.qml \
     qml/pages/SettingsPage.qml \
+    qml/pages/QuickCaptureErrorPage.qml \
     rpm/Harbour-portlight.changes.in \
     rpm/Harbour-portlight.changes.run.in \
     rpm/Harbour-portlight.spec \
