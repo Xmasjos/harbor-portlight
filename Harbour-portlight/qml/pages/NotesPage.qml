@@ -2,11 +2,13 @@ import QtQuick 2.0
 import Sailfish.Silica 1.0
 
 Page {
-    id: page
+    allowedOrientations: Orientation.All
+    id: notesPage
     property var applicationWindow
     property string currentFolder: ""
     property string scanStatus: "Loading vault…"
     property string searchQuery: ""
+    property bool refreshPending: true
     property string folderTitle: currentFolder.length
             ? currentFolder.slice(currentFolder.lastIndexOf("/") + 1)
             : "Obsidian notes"
@@ -50,6 +52,7 @@ Page {
 
     function refreshFolder(resetPosition) {
         var result = vault.listVaultEntries(currentFolder)
+        refreshPending = false
         if (!result.ok) {
             updateNotes([], resetPosition)
             scanStatus = result.error
@@ -59,7 +62,7 @@ Page {
         var entries = []
         for (var i = 0; i < result.entries.length; i++) {
             var entry = result.entries[i]
-            if (entry.type === "unsupported" && !vault.showUnsupportedFiles) continue
+            if (entry.type === "unsupported" && !applicationWindow.showUnsupportedFiles) continue
             entry.excerpt = entry.excerpt || ""
             entries.push(entry)
         }
@@ -73,7 +76,41 @@ Page {
             pageStack.push(Qt.resolvedUrl("NotePage.qml"), {
                 notePath: path,
                 noteContent: result.content,
-                applicationWindow: page.applicationWindow
+                applicationWindow: notesPage.applicationWindow
+            })
+        } else {
+            scanStatus = result.error
+        }
+    }
+
+    function openImage(path) {
+        var source = vault.imageUrl(path)
+        if (!source.length) {
+            scanStatus = "Unable to open image"
+            return
+        }
+        pageStack.push(Qt.resolvedUrl("ImagePage.qml"), {
+            imagePath: path,
+            imageSource: source
+        })
+    }
+
+    function createUntitledNote() {
+        var base = currentFolder.length ? currentFolder + "/" : ""
+        var path = base + "Untitled.md"
+        var suffix = 1
+        var result = vault.createNote(path, "")
+        while (!result.ok && suffix < 1000) {
+            if (result.error !== "A note with that name already exists") break
+            path = base + "Untitled " + suffix + ".md"
+            result = vault.createNote(path, "")
+            suffix++
+        }
+        if (result.ok) {
+            pageStack.push(Qt.resolvedUrl("NotePage.qml"), {
+                notePath: path,
+                noteContent: "",
+                applicationWindow: notesPage.applicationWindow
             })
         } else {
             scanStatus = result.error
@@ -86,17 +123,19 @@ Page {
     }
 
     function askPath(title, initialText, placeholder, callback, destination, destinationType, properties) {
+        properties = properties || ({})
+        properties.applicationWindow = notesPage.applicationWindow
         pageStack.push(pathDialog, {
             dialogTitle: title,
             initialText: initialText,
             pathPlaceholder: placeholder,
             acceptCallback: callback,
-            sourcePage: page,
+            sourcePage: notesPage,
             destinationType: destinationType,
             acceptDestination: destination,
             acceptDestinationProperties: properties,
             acceptDestinationAction: PageStackAction.Replace,
-            acceptDestinationReplaceTarget: page
+            acceptDestinationReplaceTarget: notesPage
         })
     }
 
@@ -138,54 +177,51 @@ Page {
         model: notesModel
         PullDownMenu {
             MenuItem {
-                text: vault.showUnsupportedFiles ? "Hide unsupported files" : "Show unsupported files"
+                text: "Settings"
+                onClicked: pageStack.push(Qt.resolvedUrl("SettingsPage.qml"), {
+                    applicationWindow: notesPage.applicationWindow
+                })
+            }
+            MenuItem {
+                text: applicationWindow.showUnsupportedFiles ? "Hide unsupported files" : "Show unsupported files"
                 onClicked: {
-                    vault.showUnsupportedFiles = !vault.showUnsupportedFiles
-                    if (!page.searchQuery.trim().length) page.refreshFolder(true)
+                    applicationWindow.showUnsupportedFiles = !applicationWindow.showUnsupportedFiles
+                    if (!notesPage.searchQuery.trim().length) notesPage.refreshFolder(true)
                 }
             }
             MenuItem {
-                text: "Settings"
-                onClicked: pageStack.push(Qt.resolvedUrl("SettingsPage.qml"))
-            }
-            MenuItem {
                 text: "Create folder"
-                onClicked: page.askPath("New folder", "", "Folder name or vault path", function(name, dialog) {
-                    var path = page.currentFolder.length ? page.currentFolder + "/" + name : name
+                onClicked: notesPage.askPath("New folder", "", "Folder name or vault path", function(name, dialog) {
+                    var path = notesPage.currentFolder.length ? notesPage.currentFolder + "/" + name : name
                     var result = vault.createFolder(path)
                     if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
                     else dialog.returnToSource(result.error)
-                }, Qt.resolvedUrl("NotesPage.qml"), "folder", { currentFolder: page.currentFolder })
+                }, Qt.resolvedUrl("NotesPage.qml"), "folder", { currentFolder: notesPage.currentFolder })
             }
             MenuItem {
                 text: "Create note"
-                onClicked: page.askPath("New note", "", "Note name or vault path", function(name, dialog) {
-                    var path = page.notePath(name)
-                    var result = vault.createNote(path, "")
-                    if (!result.ok) dialog.returnToSource(result.error)
-                }, Qt.resolvedUrl("NotePage.qml"), "note",
-                { notePath: page.notePath(""), noteContent: "" })
+                onClicked: notesPage.createUntitledNote()
             }
         }
         header: Column {
             width: listView.width
             PageHeader {
-                title: page.folderTitle
-                description: page.currentFolder.length ? page.currentFolder : "Vault root"
+                title: notesPage.folderTitle
+                description: notesPage.currentFolder.length ? notesPage.currentFolder : "Vault root"
             }
             SearchField {
                 id: searchField
                 width: parent.width
                 placeholderText: "Search notes"
                 onTextChanged: {
-                    page.searchQuery = text
+                    notesPage.searchQuery = text
                     searchTimer.restart()
                 }
             }
             Label {
                 x: Theme.horizontalPageMargin
                 width: parent.width - 2 * Theme.horizontalPageMargin
-                text: page.scanStatus
+                text: notesPage.scanStatus
                 color: Theme.secondaryColor
                 font.pixelSize: Theme.fontSizeExtraSmall
                 truncationMode: TruncationMode.Fade
@@ -202,14 +238,14 @@ Page {
                     onClicked: {
                         var sourcePath = noteDelegate.entry.path
                         var isFolder = noteDelegate.entry.type === "folder"
-                        page.askPath(isFolder ? "Rename folder" : "Rename note", sourcePath,
+                        notesPage.askPath(isFolder ? "Rename folder" : "Rename note", sourcePath,
                                      "Name and extension", function(path, dialog) {
                             var result = isFolder ? vault.moveFolder(sourcePath, path)
                                                   : vault.moveNote(sourcePath, path)
                             if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
                             else dialog.returnToSource(result.error)
                         }, Qt.resolvedUrl("NotesPage.qml"), "destination",
-                        { currentFolder: page.parentFolder(sourcePath) })
+                        { currentFolder: notesPage.parentFolder(sourcePath) })
                     }
                 }
                 MenuItem {
@@ -219,14 +255,14 @@ Page {
                         var isFolder = noteDelegate.entry.type === "folder"
                         var defaultPath = isFolder ? sourcePath + " copy"
                                                     : sourcePath.replace(/\.md$/i, " copy.md")
-                        page.askPath(isFolder ? "Copy folder to" : "Copy note to", defaultPath,
+                        notesPage.askPath(isFolder ? "Copy folder to" : "Copy note to", defaultPath,
                                      "Destination path", function(path, dialog) {
                             var result = isFolder ? vault.copyFolder(sourcePath, path)
                                                   : vault.copyNote(sourcePath, path)
                             if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
                             else dialog.returnToSource(result.error)
                         }, Qt.resolvedUrl("NotesPage.qml"), "destination",
-                        { currentFolder: page.parentFolder(defaultPath) })
+                        { currentFolder: notesPage.parentFolder(defaultPath) })
                     }
                 }
                 MenuItem {
@@ -234,14 +270,14 @@ Page {
                     onClicked: {
                         var sourcePath = noteDelegate.entry.path
                         var isFolder = noteDelegate.entry.type === "folder"
-                        page.askPath(isFolder ? "Move folder to" : "Move note to", sourcePath,
+                        notesPage.askPath(isFolder ? "Move folder to" : "Move note to", sourcePath,
                                      "Destination path", function(path, dialog) {
                             var result = isFolder ? vault.moveFolder(sourcePath, path)
                                                   : vault.moveNote(sourcePath, path)
                             if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
                             else dialog.returnToSource(result.error)
                         }, Qt.resolvedUrl("NotesPage.qml"), "destination",
-                        { currentFolder: page.parentFolder(sourcePath) })
+                        { currentFolder: notesPage.parentFolder(sourcePath) })
                     }
                 }
                 MenuItem {
@@ -251,12 +287,12 @@ Page {
                         var isFolder = noteDelegate.entry.type === "folder"
                         noteDelegate.remorseDelete(function() {
                             if (!isFolder) {
-                                page.deleteNote(sourcePath)
+                                notesPage.deleteNote(sourcePath)
                                 return
                             }
                             var result = vault.deleteFolder(sourcePath)
-                            if (result.ok) page.refreshFolder()
-                            else page.scanStatus = result.error
+                            if (result.ok) notesPage.refreshFolder()
+                            else notesPage.scanStatus = result.error
                         })
                     }
                 }
@@ -269,7 +305,7 @@ Page {
                 anchors.verticalCenter: parent.verticalCenter
                 Label {
                     width: parent.width
-                    text: page.searchQuery.trim().length ? path : name
+                    text: notesPage.searchQuery.trim().length ? path : name
                     truncationMode: TruncationMode.Fade
                     color: noteDelegate.highlighted ? Theme.highlightColor : Theme.primaryColor
                 }
@@ -289,7 +325,7 @@ Page {
                 anchors.verticalCenter: parent.verticalCenter
                 width: Theme.iconSizeMedium
                 height: Theme.iconSizeMedium
-                source: "image://theme/" + page.iconForEntry(noteDelegate.entry)
+                source: "image://theme/" + notesPage.iconForEntry(noteDelegate.entry)
                         + "?" + (noteDelegate.highlighted ? Theme.highlightColor : Theme.primaryColor)
             }
 
@@ -297,12 +333,14 @@ Page {
                 if (type === "folder") {
                     pageStack.animatorPush(Qt.resolvedUrl("NotesPage.qml"), {
                         currentFolder: path,
-                        applicationWindow: page.applicationWindow
+                        applicationWindow: notesPage.applicationWindow
                     })
+                } else if (type === "image") {
+                    openImage(path)
                 } else if (type === "note") {
                     openNote(path)
                 } else {
-                    page.scanStatus = "Unsupported file type"
+                    notesPage.scanStatus = "Unsupported file type"
                 }
             }
         }
@@ -319,22 +357,28 @@ Page {
         id: searchTimer
         interval: 300
         onTriggered: {
-            var query = page.searchQuery.trim()
+            if (notesPage.status !== PageStatus.Active) {
+                notesPage.refreshPending = true
+                return
+            }
+            var query = notesPage.searchQuery.trim()
             if (!query.length) {
-                page.refreshFolder(true)
+                notesPage.refreshFolder(true)
                 return
             }
 
             var result = vault.searchNotes(query)
             if (!result.ok) {
-                page.updateNotes([], true)
+                notesPage.refreshPending = false
+                notesPage.updateNotes([], true)
                 scanStatus = result.error
                 return
             }
             var matches = result.matches
+            notesPage.refreshPending = false
             for (var i = 0; i < matches.length; i++)
                 matches[i].excerpt = matches[i].excerpt || ""
-            page.updateNotes(matches, true)
+            notesPage.updateNotes(matches, true)
             scanStatus = result.matches.length
                     ? result.matches.length + " matches across vault"
                     : "No matching notes"
@@ -397,19 +441,19 @@ Page {
         }
     }
 
+    function enterPage() {
+        if (!applicationWindow || !applicationWindow.configurationReady) return
+        applicationWindow.currentFolder = currentFolder
+        applicationWindow.currentNote = ""
+        vault.watchFolder(currentFolder)
+        if (refreshPending) refreshTimer.restart()
+    }
+
     Component.onCompleted: {
-        refreshFolder(true)
-        if (visible) vault.watchFolder(currentFolder)
+        if (visible) enterPage()
     }
     onVisibleChanged: {
-        if (visible) {
-            if (applicationWindow) {
-                applicationWindow.currentFolder = currentFolder
-                applicationWindow.currentNote = ""
-            }
-            vault.watchFolder(currentFolder)
-            refreshFolder(true)
-        }
+        if (visible) enterPage()
     }
 
     onCurrentFolderChanged: {
@@ -419,13 +463,42 @@ Page {
     Connections {
         target: vault
         onVaultPathChanged: {
-            page.currentFolder = ""
+            notesPage.currentFolder = ""
             searchField.text = ""
-            if (page.visible) page.refreshFolder(true)
+            notesPage.refreshPending = true
+            if (notesPage.visible && applicationWindow.configurationReady) notesPage.enterPage()
         }
         onFolderChanged: {
-            if (page.searchQuery.trim().length) searchTimer.restart()
-            else page.refreshFolder()
+            if (!applicationWindow.configurationReady) return
+            if (notesPage.searchQuery.trim().length) {
+                if (notesPage.status === PageStatus.Active) searchTimer.restart()
+                else notesPage.refreshPending = true
+            } else {
+                notesPage.refreshPending = true
+                if (notesPage.status === PageStatus.Active) refreshTimer.restart()
+            }
+        }
+    }
+
+    onStatusChanged: {
+        if (status === PageStatus.Active && refreshPending) refreshTimer.restart()
+    }
+
+    Timer {
+        id: refreshTimer
+        interval: 1
+        onTriggered: {
+            if (notesPage.status !== PageStatus.Active || !notesPage.refreshPending) return
+            if (notesPage.searchQuery.trim().length) searchTimer.restart()
+            else notesPage.refreshFolder(true)
+        }
+    }
+
+    Connections {
+        target: notesPage.applicationWindow
+        onConfigurationReadyChanged: if (applicationWindow.configurationReady && notesPage.visible) notesPage.enterPage()
+        onShowUnsupportedFilesChanged: {
+            if (notesPage.visible && !notesPage.searchQuery.trim().length) notesPage.refreshFolder(true)
         }
     }
 }

@@ -3,7 +3,9 @@ import Sailfish.Silica 1.0
 import Sailfish.Pickers 1.0
 
 Page {
-    id: page
+    allowedOrientations: Orientation.All
+    id: settingsPage
+    property var applicationWindow
     property string statusText: ""
     property var saveDelays: [0, 300, 500, 1000, 2000, 3000, 5000, 10000, 20000, 30000]
 
@@ -19,7 +21,7 @@ Page {
 
         Column {
             id: column
-            width: page.width
+            width: settingsPage.width
             PageHeader { title: "Settings" }
 
             SectionHeader { text: "Vault" }
@@ -34,24 +36,25 @@ Page {
             TextSwitch {
                 text: "Save notes automatically"
                 description: "Save edits after a short pause"
-                checked: vault.autoSave
-                onCheckedChanged: vault.autoSave = checked
+                automaticCheck: false
+                checked: settingsPage.applicationWindow.autoSave
+                onClicked: settingsPage.applicationWindow.autoSave = !settingsPage.applicationWindow.autoSave
             }
             Slider {
                 width: parent.width
                 label: "Save delay"
                 minimumValue: 0
-                maximumValue: page.saveDelays.length - 1
+                maximumValue: settingsPage.saveDelays.length - 1
                 stepSize: 1
-                value: Math.max(0, page.saveDelays.indexOf(vault.saveDelay))
-                valueText: page.saveDelayLabel(page.saveDelays[Math.round(value)])
-                enabled: vault.autoSave
-                onValueChanged: vault.saveDelay = page.saveDelays[Math.round(value)]
+                value: Math.max(0, settingsPage.saveDelays.indexOf(settingsPage.applicationWindow.saveDelay))
+                valueText: settingsPage.saveDelayLabel(settingsPage.saveDelays[Math.round(value)])
+                enabled: settingsPage.applicationWindow.autoSave
+                onReleased: settingsPage.applicationWindow.saveDelay = settingsPage.saveDelays[Math.round(value)]
             }
             Label {
                 x: Theme.horizontalPageMargin
                 width: parent.width - 2 * Theme.horizontalPageMargin
-                text: page.statusText
+                text: settingsPage.statusText
                 visible: text.length > 0
                 color: Theme.highlightColor
             }
@@ -65,7 +68,9 @@ Page {
             title: "Choose vault folder"
             onAccepted: {
                 if (!vault.setVaultPath(selectedPath)) {
-                    page.statusText = "Choose an accessible folder"
+                    settingsPage.statusText = "Choose an accessible folder"
+                } else {
+                    settingsPage.applicationWindow.vaultPath = vault.vaultPath
                 }
             }
         }

@@ -2,12 +2,14 @@ Name:       Harbour-portlight
 
 Summary:    Portlight
 Version:    0.1
-Release:    3
+Release:    4
 License:    LICENSE
 URL:        http://example.org/
 Source0:    %{name}-%{version}.tar.bz2
 Requires:   sailfishsilica-qt5 >= 0.10.9
 Requires:   libsailfishapp-launcher
+Requires:   nemo-qml-plugin-configuration-qt5
+Requires:   qt5-qtsvg-plugin-imageformat-svg
 BuildRequires:  pkgconfig(sailfishapp) >= 1.0.3
 BuildRequires:  pkgconfig(Qt5Core)
 BuildRequires:  pkgconfig(Qt5Qml)
