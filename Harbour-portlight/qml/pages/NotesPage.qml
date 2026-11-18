@@ -5,6 +5,7 @@ Page {
     allowedOrientations: Orientation.All
     id: notesPage
     property var applicationWindow
+    property Component notesPageComponent
     property string currentFolder: ""
     property string scanStatus: "Loading vault…"
     property string searchQuery: ""
@@ -73,7 +74,7 @@ Page {
     function openNote(path) {
         var result = vault.readNote(path)
         if (result.ok) {
-            pageStack.push(Qt.resolvedUrl("NotePage.qml"), {
+            pageStack.push(notePage, {
                 notePath: path,
                 noteContent: result.content,
                 applicationWindow: notesPage.applicationWindow
@@ -89,7 +90,7 @@ Page {
             scanStatus = "Unable to open image"
             return
         }
-        pageStack.push(Qt.resolvedUrl("ImagePage.qml"), {
+        pageStack.push(imagePage, {
             imagePath: path,
             imageSource: source
         })
@@ -107,7 +108,7 @@ Page {
             suffix++
         }
         if (result.ok) {
-            pageStack.push(Qt.resolvedUrl("NotePage.qml"), {
+            pageStack.push(notePage, {
                 notePath: path,
                 noteContent: "",
                 applicationWindow: notesPage.applicationWindow
@@ -178,7 +179,7 @@ Page {
         PullDownMenu {
             MenuItem {
                 text: "Settings"
-                onClicked: pageStack.push(Qt.resolvedUrl("SettingsPage.qml"), {
+                onClicked: pageStack.push(settingsPage, {
                     applicationWindow: notesPage.applicationWindow
                 })
             }
@@ -196,7 +197,7 @@ Page {
                     var result = vault.createFolder(path)
                     if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
                     else dialog.returnToSource(result.error)
-                }, Qt.resolvedUrl("NotesPage.qml"), "folder", { currentFolder: notesPage.currentFolder })
+                }, notesPageComponent, "folder", { currentFolder: notesPage.currentFolder })
             }
             MenuItem {
                 text: "Create note"
@@ -244,7 +245,7 @@ Page {
                                                   : vault.moveNote(sourcePath, path)
                             if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
                             else dialog.returnToSource(result.error)
-                        }, Qt.resolvedUrl("NotesPage.qml"), "destination",
+                        }, notesPageComponent, "destination",
                         { currentFolder: notesPage.parentFolder(sourcePath) })
                     }
                 }
@@ -261,7 +262,7 @@ Page {
                                                   : vault.copyNote(sourcePath, path)
                             if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
                             else dialog.returnToSource(result.error)
-                        }, Qt.resolvedUrl("NotesPage.qml"), "destination",
+                        }, notesPageComponent, "destination",
                         { currentFolder: notesPage.parentFolder(defaultPath) })
                     }
                 }
@@ -276,7 +277,7 @@ Page {
                                                   : vault.moveNote(sourcePath, path)
                             if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
                             else dialog.returnToSource(result.error)
-                        }, Qt.resolvedUrl("NotesPage.qml"), "destination",
+                        }, notesPageComponent, "destination",
                         { currentFolder: notesPage.parentFolder(sourcePath) })
                     }
                 }
@@ -331,7 +332,7 @@ Page {
 
             onClicked: {
                 if (type === "folder") {
-                    pageStack.animatorPush(Qt.resolvedUrl("NotesPage.qml"), {
+                    pageStack.animatorPush(notesPageComponent, {
                         currentFolder: path,
                         applicationWindow: notesPage.applicationWindow
                     })
@@ -383,6 +384,21 @@ Page {
                     ? result.matches.length + " matches across vault"
                     : "No matching notes"
         }
+    }
+
+    Component {
+        id: notePage
+        NotePage {}
+    }
+
+    Component {
+        id: imagePage
+        ImagePage {}
+    }
+
+    Component {
+        id: settingsPage
+        SettingsPage {}
     }
 
     Component {

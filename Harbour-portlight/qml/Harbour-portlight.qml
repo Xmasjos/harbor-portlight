@@ -36,7 +36,7 @@ ApplicationWindow {
             if (createFolderResult.ok) folderResult = vault.listVaultEntries(folder)
         }
         if (!folderResult.ok) {
-            pageStack.push(Qt.resolvedUrl("pages/QuickCaptureErrorPage.qml"), {
+            pageStack.push(quickCaptureErrorPage, {
                 applicationWindow: app,
                 statusText: "Quick note folder is unavailable. Choose an accessible folder in Settings."
             })
@@ -56,13 +56,13 @@ ApplicationWindow {
             suffix++
         }
         if (!result.ok) {
-            pageStack.push(Qt.resolvedUrl("pages/QuickCapturePage.qml"), {
+            pageStack.push(quickCaptureErrorPage, {
                 applicationWindow: app,
                 statusText: "Unable to create quick note: " + result.error
             })
             return
         }
-        pageStack.push(Qt.resolvedUrl("pages/NotePage.qml"), {
+        pageStack.push(notePage, {
             notePath: path,
             noteContent: "",
             applicationWindow: app,
@@ -84,7 +84,7 @@ ApplicationWindow {
         }
         if (result.ok) {
             currentNote = path
-            pageStack.push(Qt.resolvedUrl("pages/NotePage.qml"), {
+            pageStack.push(notePage, {
                 notePath: path,
                 noteContent: "",
                 applicationWindow: app
@@ -93,7 +93,7 @@ ApplicationWindow {
         }
     }
 
-    initialPage: Component { NotesPage { applicationWindow: app } }
+    initialPage: notesPageFactory
     cover: Component {
         CoverPage {
             locationText: app.currentNote.length ? app.currentNote
@@ -112,5 +112,23 @@ ApplicationWindow {
         }
 
         app.configurationReady = true
+    }
+
+    Component {
+        id: quickCaptureErrorPage
+        QuickCaptureErrorPage {}
+    }
+
+    Component {
+        id: notePage
+        NotePage {}
+    }
+
+    Component {
+        id: notesPageFactory
+        NotesPage {
+            applicationWindow: app
+            notesPageComponent: notesPageFactory
+        }
     }
 }
