@@ -2,20 +2,20 @@
 
 Current device workflow: search the configured vault, open a Markdown note, edit it, and save it back to the synced file.
 
-## 1. Make vault navigation user-friendly (Silica page stack; verify on device)
+## 1. Make vault navigation user-friendly (Silica page stack; verified on device)
 
 - The native Sailfish QML browser lists folders and Markdown notes in the current folder; tapping a folder pushes another Silica page, and standard page-stack back navigation goes up.
 - Search remains vault-wide and results show their relative paths.
 - Folder and file navigation stays in QML/Silica; the WebView remains optional for editing or preview.
 - `.obsidian` internals are excluded from browsing and search unless a supported feature needs them.
 
-### 1.a Note actions (implemented in source; verify on device)
+### 1.a Note actions (implemented & verified on device)
 
 - Add **Create new note** to the notes browsing page's pulley menu.
 - Add **Create folder** to the notes browsing page's pulley menu.
 - Add a note & folder item context menu with **Delete** (remorse timer), **Copy**, **rename** and **Move**.
 
-### 1.b Notes list polish
+### 1.b Notes list polish (implemented & verified on device)
 
 - Add type-specific Sailfish icons in `NotesPage`: `icon-m-file-folder` for non-empty folders, `icon-m-folder` for empty folders, `icon-m-file-note` for Markdown, `icon-m-file-document` for `.txt`, `icon-m-file-image` for common image formats, `icon-m-file-pdf` for PDFs, `icon-m-file-formatted` for word-processing documents, `icon-m-file-presentation` for presentations, and the matching archive/audio/video/spreadsheet icons where applicable. Use `icon-m-file-other` as the fallback. Remove the trailing `/` from folder names once the folder icon is present.
 - Have the vault listing classify readable files by extension and report whether each folder contains any visible items, so empty and non-empty folder icons can differ. Keep file opening behavior explicit: Markdown and text open in the editor; other formats can be shown in the list and handed to the system or an appropriate viewer when supported.
@@ -30,7 +30,7 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 - Before saving over a changed file, offer a safe choice such as reload or save the current text as a separate copy.
 - Never silently overwrite the newer synced version.
 
-## 3. Let the user choose the vault in QML (implemented in source; verify on device)
+## 3. Let the user choose the vault in QML (implemented & verified on device)
 
 - Add a native QML folder-selection flow for an existing, locally synced vault.
 - Store the chosen folder and use it for browsing, search, reading, and saving instead of assuming `~/Documents/Obsidian/`.
@@ -42,7 +42,7 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 - Improve the in-app editor for phone use: comfortable cursor and selection behavior, a Markdown preview, and small editing helpers only where they make common tasks easier.
 - Preserve the original Markdown source, frontmatter, and unfamiliar syntax when editing or previewing.
 
-## 5. Create and organize notes
+## 5. Create and organize notes (implemented & verified on device)
 
 - Allow renaming notes with the native QML interface.
 
@@ -89,13 +89,13 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 - First identify specific plugin behaviors that matter in the user's vault, then consider implementing those behaviors natively or through a focused compatibility layer.
 - Revisit a broader plugin strategy only after browsing, editing, search, and sync-conflict handling are reliable.
 
-## 13. Add a settings page (implemented in source; verify on device)
+## 13. Add a settings page (implemented & verified on device)
 
 - Provide a native settings page reachable from the main navigation.
 - Choose the vault folder with the Sailfish folder picker.
 - Configure automatic note saving and its delay.
 
-## 14. Make the app cover useful (implemented in source; verify on device)
+## 14. Make the app cover useful (implemented & verified on device)
 
 - Show the currently open note or folder on the cover.
 - Add a cover action to create a note in that current location.
@@ -110,6 +110,20 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 
 - Add an About page reachable from the app navigation.
 - Include the disclaimer that Portlight is independent and is not affiliated with or endorsed by Obsidian or its developers.
+- Start the page with the app name, then the app icon, then the disclaimer, then a short description, then a section for issue reporting with the github repo link
+
+## 17. Capture quick notes
+
+- Provide a quick capture flow for jotting down text without first browsing to or naming a note. Save quick notes in the configured vault folder, chosen through Settings with a folder picker; make the destination visible and handle a missing or unavailable folder clearly. See also [Daily notes](#18-support-daily-notes) for the related date-based note workflow and shared destination-setting behavior.
+- Offer quick-note capture as an optional cover action, alongside the existing action that creates a blank note in the current folder. The quick-note action should open the capture flow and save to its configured destination, regardless of the currently browsed folder.
+- On save, create a Markdown note with a predictable timestamp-based name and avoid overwriting an existing note. Let the user enter the text before saving and open the created note afterward for continued editing.
+- Keep the initial flow focused on text capture. Consider a home-screen/app shortcut and sharing text into Portlight as follow-up entry points if SailfishOS supports them cleanly; voice capture and attachments can wait until there is a clear need.
+
+## 18. Support daily notes
+
+- Provide a daily-note action that opens today's note, creating it when it does not exist. Configure the destination folder and date-based filename format, and handle missing or unavailable folders clearly.
+- Keep daily notes distinct from standalone quick notes: a daily note is one note per date that is reopened and extended throughout the day. See also [Capture quick notes](#17-capture-quick-notes) for the related capture flow, optional cover entry point, and shared vault-folder setting; consider offering an explicit way to append a quick capture to today's note.
+- Define behavior for date changes, existing notes, and filename collisions, and open the daily note for continued editing after creation.
 
 ## Inspiration
 

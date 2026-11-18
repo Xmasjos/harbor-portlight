@@ -7,8 +7,8 @@
 #include <QMimeDatabase>
 #include <QMimeType>
 #include <QSaveFile>
-#include <QSettings>
 #include <QVariantList>
+#include <QUrl>
 
 namespace {
 bool isTextNote(const QFileInfo &file, const QMimeDatabase &mimeDatabase)
@@ -29,6 +29,17 @@ bool isTextNote(const QFileInfo &file, const QMimeDatabase &mimeDatabase)
             && (file.size() == 0
                 || mimeDatabase.mimeTypeForFile(file.filePath(), QMimeDatabase::MatchContent).name()
                         .startsWith(QStringLiteral("text/")));
+}
+
+bool isImageFile(const QFileInfo &file)
+{
+    static const QStringList imageExtensions = {
+        QStringLiteral("png"), QStringLiteral("jpg"), QStringLiteral("jpeg"),
+        QStringLiteral("gif"), QStringLiteral("bmp"), QStringLiteral("webp"),
+        QStringLiteral("svg"), QStringLiteral("heic"), QStringLiteral("tif"),
+        QStringLiteral("tiff")
+    };
+    return imageExtensions.contains(file.suffix().toLower());
 }
 
 QString safeNotePath(const QString &vaultPath, const QString &relativePath)
@@ -98,8 +109,7 @@ bool copyDirectory(const QString &source, const QString &destination)
 
 VaultBackend::VaultBackend(QObject *parent)
     : QObject(parent),
-      m_vaultPath(QSettings().value(QStringLiteral("vaultPath"),
-                                     QDir::home().filePath(QStringLiteral("Documents/Obsidian"))).toString())
+      m_vaultPath(QDir::home().filePath(QStringLiteral("Documents/Obsidian")))
 {
     connect(&m_watcher, &QFileSystemWatcher::directoryChanged,
             this, &VaultBackend::folderChanged);
@@ -108,47 +118,6 @@ VaultBackend::VaultBackend(QObject *parent)
 QString VaultBackend::vaultPath() const
 {
     return m_vaultPath;
-}
-
-bool VaultBackend::autoSave() const
-{
-    return QSettings().value(QStringLiteral("autoSave"), false).toBool();
-}
-
-void VaultBackend::setAutoSave(bool enabled)
-{
-    if (autoSave() == enabled) return;
-    QSettings().setValue(QStringLiteral("autoSave"), enabled);
-    emit autoSaveChanged();
-}
-
-int VaultBackend::saveDelay() const
-{
-    return QSettings().value(QStringLiteral("saveDelayMs"), 3000).toInt();
-}
-
-void VaultBackend::setSaveDelay(int delayMs)
-{
-    static const int delays[] = {0, 300, 500, 1000, 2000, 3000, 5000, 10000, 20000, 30000};
-    int nearest = delays[0];
-    for (unsigned int i = 1; i < sizeof(delays) / sizeof(delays[0]); ++i) {
-        if (qAbs(delays[i] - delayMs) < qAbs(nearest - delayMs)) nearest = delays[i];
-    }
-    if (saveDelay() == nearest) return;
-    QSettings().setValue(QStringLiteral("saveDelayMs"), nearest);
-    emit saveDelayChanged();
-}
-
-bool VaultBackend::showUnsupportedFiles() const
-{
-    return QSettings().value(QStringLiteral("showUnsupportedFiles"), false).toBool();
-}
-
-void VaultBackend::setShowUnsupportedFiles(bool show)
-{
-    if (showUnsupportedFiles() == show) return;
-    QSettings().setValue(QStringLiteral("showUnsupportedFiles"), show);
-    emit showUnsupportedFilesChanged();
 }
 
 bool VaultBackend::setVaultPath(const QString &path)
@@ -160,7 +129,6 @@ bool VaultBackend::setVaultPath(const QString &path)
     }
     if (m_vaultPath == canonicalPath) return true;
     m_vaultPath = canonicalPath;
-    QSettings().setValue(QStringLiteral("vaultPath"), m_vaultPath);
     emit vaultPathChanged();
     emit folderChanged();
     return true;
@@ -236,8 +204,11 @@ QVariantMap VaultBackend::listVaultEntries(const QString &relativeFolder) const
     const QMimeDatabase mimeDatabase;
     for (const QFileInfo &entry : files) {
         const bool textNote = isTextNote(entry, mimeDatabase);
+        const bool image = isImageFile(entry);
         entries.append(QVariantMap{
-            {QStringLiteral("type"), textNote ? QStringLiteral("note") : QStringLiteral("unsupported")},
+            {QStringLiteral("type"), textNote ? QStringLiteral("note")
+                                              : image ? QStringLiteral("image")
+                                                      : QStringLiteral("unsupported")},
             {QStringLiteral("hasItems"), false},
             {QStringLiteral("name"), entry.fileName()},
             {QStringLiteral("path"), QDir(root).relativeFilePath(entry.filePath())}
@@ -321,6 +292,14 @@ QVariantMap VaultBackend::readNote(const QString &relativePath) const
     }
 
     return {{QStringLiteral("ok"), true}, {QStringLiteral("content"), QString::fromUtf8(file.readAll())}};
+}
+
+QString VaultBackend::imageUrl(const QString &relativePath) const
+{
+    const QString path = safeNotePath(m_vaultPath, relativePath);
+    const QFileInfo file(path);
+    return !path.isEmpty() && file.isFile() && file.isReadable()
+            ? QUrl::fromLocalFile(path).toString() : QString();
 }
 
 QVariantMap VaultBackend::writeNote(const QString &relativePath, const QString &content) const

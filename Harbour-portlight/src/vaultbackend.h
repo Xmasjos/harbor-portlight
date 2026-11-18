@@ -13,17 +13,8 @@ public:
     explicit VaultBackend(QObject *parent = nullptr);
 
     Q_PROPERTY(QString vaultPath READ vaultPath NOTIFY vaultPathChanged)
-    Q_PROPERTY(bool autoSave READ autoSave WRITE setAutoSave NOTIFY autoSaveChanged)
-    Q_PROPERTY(int saveDelay READ saveDelay WRITE setSaveDelay NOTIFY saveDelayChanged)
-    Q_PROPERTY(bool showUnsupportedFiles READ showUnsupportedFiles WRITE setShowUnsupportedFiles NOTIFY showUnsupportedFilesChanged)
 
     QString vaultPath() const;
-    bool autoSave() const;
-    void setAutoSave(bool enabled);
-    int saveDelay() const;
-    void setSaveDelay(int seconds);
-    bool showUnsupportedFiles() const;
-    void setShowUnsupportedFiles(bool show);
     Q_INVOKABLE bool setVaultPath(const QString &path);
 
     Q_INVOKABLE void watchFolder(const QString &relativeFolder);
@@ -31,6 +22,7 @@ public:
     Q_INVOKABLE QVariantMap listVaultEntries(const QString &relativeFolder) const;
     Q_INVOKABLE QVariantMap searchNotes(const QString &query) const;
     Q_INVOKABLE QVariantMap readNote(const QString &relativePath) const;
+    Q_INVOKABLE QString imageUrl(const QString &relativePath) const;
     Q_INVOKABLE QVariantMap writeNote(const QString &relativePath, const QString &content) const;
     Q_INVOKABLE QVariantMap createNote(const QString &relativePath, const QString &content) const;
     Q_INVOKABLE QVariantMap createFolder(const QString &relativePath) const;
@@ -48,9 +40,6 @@ private:
 signals:
     void folderChanged();
     void vaultPathChanged();
-    void autoSaveChanged();
-    void saveDelayChanged();
-    void showUnsupportedFilesChanged();
 };
 
 #endif // VAULTBACKEND_H
