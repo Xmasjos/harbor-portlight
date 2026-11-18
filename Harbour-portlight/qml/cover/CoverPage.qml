@@ -4,6 +4,7 @@ import Sailfish.Silica 1.0
 CoverBackground {
     property string locationText: "Vault root"
     signal createNoteRequested()
+    signal quickCaptureRequested()
 
     Label {
         anchors.centerIn: parent
@@ -22,6 +23,10 @@ CoverBackground {
         CoverAction {
             iconSource: "image://theme/icon-cover-new"
             onTriggered: createNoteRequested()
+        }
+        CoverAction {
+            iconSource: "image://theme/icon-cover-favorite"
+            onTriggered: quickCaptureRequested()
         }
     }
 }

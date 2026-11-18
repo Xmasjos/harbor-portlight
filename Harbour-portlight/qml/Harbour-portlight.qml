@@ -14,6 +14,7 @@ ApplicationWindow {
     property alias autoSave: persistedSettings.autoSave
     property alias saveDelay: persistedSettings.saveDelay
     property alias showUnsupportedFiles: persistedSettings.showUnsupportedFiles
+    property alias quickNoteFolder: persistedSettings.quickNoteFolder
 
     ConfigurationGroup {
         id: persistedSettings
@@ -24,6 +25,50 @@ ApplicationWindow {
         property bool autoSave: false
         property int saveDelay: 3000
         property bool showUnsupportedFiles: false
+        property string quickNoteFolder: "quick-notes"
+    }
+
+    function openQuickCapture() {
+        var folder = quickNoteFolder
+        var folderResult = vault.listVaultEntries(folder)
+        if (!folderResult.ok && folder.length) {
+            var createFolderResult = vault.createFolder(folder)
+            if (createFolderResult.ok) folderResult = vault.listVaultEntries(folder)
+        }
+        if (!folderResult.ok) {
+            pageStack.push(Qt.resolvedUrl("pages/QuickCaptureErrorPage.qml"), {
+                applicationWindow: app,
+                statusText: "Quick note folder is unavailable. Choose an accessible folder in Settings."
+            })
+            return
+        }
+        var now = new Date()
+        function twoDigits(value) { return value < 10 ? "0" + value : value }
+        var base = "Quick note " + now.getFullYear() + "-" + twoDigits(now.getMonth() + 1)
+                + "-" + twoDigits(now.getDate()) + " " + twoDigits(now.getHours())
+                + "-" + twoDigits(now.getMinutes()) + "-" + twoDigits(now.getSeconds())
+        var path = (folder.length ? folder + "/" : "") + base + ".md"
+        var result = vault.createNote(path, "")
+        var suffix = 1
+        while (!result.ok && result.error === "A note with that name already exists" && suffix < 1000) {
+            path = (folder.length ? folder + "/" : "") + base + " " + suffix + ".md"
+            result = vault.createNote(path, "")
+            suffix++
+        }
+        if (!result.ok) {
+            pageStack.push(Qt.resolvedUrl("pages/QuickCapturePage.qml"), {
+                applicationWindow: app,
+                statusText: "Unable to create quick note: " + result.error
+            })
+            return
+        }
+        pageStack.push(Qt.resolvedUrl("pages/NotePage.qml"), {
+            notePath: path,
+            noteContent: "",
+            applicationWindow: app,
+            quickCapture: true
+        })
+        app.activate()
     }
 
     function createNoteFromCover() {
@@ -54,6 +99,7 @@ ApplicationWindow {
             locationText: app.currentNote.length ? app.currentNote
                                                  : (app.currentFolder.length ? app.currentFolder : "Vault root")
             onCreateNoteRequested: app.createNoteFromCover()
+            onQuickCaptureRequested: app.openQuickCapture()
         }
     }
 
