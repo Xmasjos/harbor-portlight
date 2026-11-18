@@ -136,7 +136,11 @@ bool VaultBackend::setVaultPath(const QString &path)
 
 void VaultBackend::watchFolder(const QString &relativeFolder)
 {
-    m_watcher.removePaths(m_watcher.directories());
+    const QStringList directories = m_watcher.directories();
+    if (directories.size() > 0) {
+        m_watcher.removePaths(directories);
+    }
+    
     const QVariantMap result = listVaultEntries(relativeFolder);
     if (!result.value(QStringLiteral("ok")).toBool()) {
         return;

@@ -1,5 +1,6 @@
 import QtQuick 2.0
 import Sailfish.Silica 1.0
+import Sailfish.Pickers 1.0
 
 Page {
     allowedOrientations: Orientation.All
@@ -13,6 +14,7 @@ Page {
     property string folderTitle: currentFolder.length
             ? currentFolder.slice(currentFolder.lastIndexOf("/") + 1)
             : "Obsidian notes"
+    signal clearSearchRequested()
 
     ListModel {
         id: notesModel
@@ -123,6 +125,12 @@ Page {
         return slash < 0 ? "" : path.substring(0, slash)
     }
 
+    function clearSearch() {
+        clearSearchRequested()
+        searchQuery = ""
+        searchTimer.stop()
+    }
+
     function askPath(title, initialText, placeholder, callback, destination, destinationType, properties) {
         properties = properties || ({})
         properties.applicationWindow = notesPage.applicationWindow
@@ -219,6 +227,10 @@ Page {
                     searchTimer.restart()
                 }
             }
+            Connections {
+                target: notesPage
+                onClearSearchRequested: searchField.text = ""
+            }
             Label {
                 x: Theme.horizontalPageMargin
                 width: parent.width - 2 * Theme.horizontalPageMargin
@@ -269,16 +281,10 @@ Page {
                 MenuItem {
                     text: "Move"
                     onClicked: {
-                        var sourcePath = noteDelegate.entry.path
-                        var isFolder = noteDelegate.entry.type === "folder"
-                        notesPage.askPath(isFolder ? "Move folder to" : "Move note to", sourcePath,
-                                     "Destination path", function(path, dialog) {
-                            var result = isFolder ? vault.moveFolder(sourcePath, path)
-                                                  : vault.moveNote(sourcePath, path)
-                            if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
-                            else dialog.returnToSource(result.error)
-                        }, notesPageComponent, "destination",
-                        { currentFolder: notesPage.parentFolder(sourcePath) })
+                        pageStack.push(moveFolderPicker, {
+                            sourcePath: noteDelegate.entry.path,
+                            isFolder: noteDelegate.entry.type === "folder"
+                        })
                     }
                 }
                 MenuItem {
@@ -402,6 +408,43 @@ Page {
     }
 
     Component {
+        id: moveFolderPicker
+        FolderPickerDialog {
+            property string sourcePath: ""
+            property bool isFolder: false
+            title: isFolder ? "Move folder to" : "Move note to"
+            path: vault.vaultPath
+
+            onAccepted: {
+                var root = vault.vaultPath
+                var selected = selectedPath.replace(/\/$/, "")
+                var destinationFolder
+                if (selected === root) {
+                    destinationFolder = ""
+                } else if (selected.indexOf(root + "/") === 0) {
+                    destinationFolder = selected.substring(root.length + 1)
+                } else {
+                    notesPage.scanStatus = "Choose a folder inside the configured vault"
+                    return
+                }
+
+                var name = sourcePath.substring(sourcePath.lastIndexOf("/") + 1)
+                var destination = destinationFolder.length
+                        ? destinationFolder + "/" + name : name
+                var result = isFolder ? vault.moveFolder(sourcePath, destination)
+                                      : vault.moveNote(sourcePath, destination)
+                if (result.ok) {
+                    notesPage.clearSearch()
+                    notesPage.currentFolder = destinationFolder
+                    notesPage.refreshFolder(true)
+                } else {
+                    notesPage.scanStatus = result.error
+                }
+            }
+        }
+    }
+
+    Component {
         id: pathDialog
         Dialog {
             id: inputDialog
@@ -480,7 +523,7 @@ Page {
         target: vault
         onVaultPathChanged: {
             notesPage.currentFolder = ""
-            searchField.text = ""
+            notesPage.clearSearch()
             notesPage.refreshPending = true
             if (notesPage.visible && applicationWindow.configurationReady) notesPage.enterPage()
         }
