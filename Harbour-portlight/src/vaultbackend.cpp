@@ -140,17 +140,21 @@ void VaultBackend::watchFolder(const QString &relativeFolder)
     if (directories.size() > 0) {
         m_watcher.removePaths(directories);
     }
-    
-    const QVariantMap result = listVaultEntries(relativeFolder);
-    if (!result.value(QStringLiteral("ok")).toBool()) {
+
+    const QString cleanedFolder = QDir::cleanPath(relativeFolder);
+    if (QDir::isAbsolutePath(relativeFolder) || cleanedFolder == QStringLiteral("..")
+            || cleanedFolder.startsWith(QStringLiteral("../"))) {
         return;
     }
+    const QString root = QFileInfo(m_vaultPath).canonicalFilePath();
     const QString folder = relativeFolder.isEmpty()
-            ? QFileInfo(m_vaultPath).canonicalFilePath()
-            : QFileInfo(QDir(m_vaultPath).filePath(QDir::cleanPath(relativeFolder))).canonicalFilePath();
-    if (!folder.isEmpty()) {
-        m_watcher.addPath(folder);
+            ? root : QFileInfo(QDir(m_vaultPath).filePath(cleanedFolder)).canonicalFilePath();
+    if (root.isEmpty() || folder.isEmpty()
+            || (folder != root && !folder.startsWith(root + QDir::separator()))
+            || !QFileInfo(folder).isDir() || !QDir(folder).isReadable()) {
+        return;
     }
+    m_watcher.addPath(folder);
 }
 
 QVariantMap VaultBackend::listVaultEntries(const QString &relativeFolder) const
@@ -184,12 +188,11 @@ QVariantMap VaultBackend::listVaultEntries(const QString &relativeFolder) const
             continue;
         }
         const QDir childFolder(entry.filePath());
-        const QFileInfoList childFolders = childFolder.entryInfoList(
-                QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable | QDir::NoSymLinks);
-        const QFileInfoList childFiles = childFolder.entryInfoList(
-                QDir::Files | QDir::Readable | QDir::NoSymLinks);
-        bool hasItems = !childFiles.isEmpty();
-        for (const QFileInfo &child : childFolders) {
+        const QFileInfoList childEntries = childFolder.entryInfoList(
+                QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Readable | QDir::NoSymLinks,
+                QDir::NoSort);
+        bool hasItems = false;
+        for (const QFileInfo &child : childEntries) {
             if (child.fileName().compare(QStringLiteral(".obsidian"), Qt::CaseInsensitive) != 0) {
                 hasItems = true;
                 break;

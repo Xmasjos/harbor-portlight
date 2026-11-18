@@ -547,7 +547,7 @@ Page {
         id: refreshTimer
         interval: 1
         onTriggered: {
-            if (notesPage.status !== PageStatus.Active || !notesPage.refreshPending) return
+            if (!notesPage.visible || !notesPage.refreshPending) return
             if (notesPage.searchQuery.trim().length) searchTimer.restart()
             else notesPage.refreshFolder(true)
         }
