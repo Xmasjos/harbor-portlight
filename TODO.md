@@ -38,9 +38,10 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 
 ## 4. Improve Markdown editing
 
-- The app already lets the user edit and save Markdown note text directly; programming-code edits are not needed for normal note editing.
-- Improve the in-app editor for phone use: comfortable cursor and selection behavior, a Markdown preview, and small editing helpers only where they make common tasks easier.
-- Preserve the original Markdown source, frontmatter, and unfamiliar syntax when editing or previewing.
+- Host the text-only Markdown editor in the bundled WebView, while keeping vault access, navigation, and the pulley menu native.
+- Preserve the original Markdown text exactly unless the user edits it; retain autosave, explicit save, and external-change protection.
+- Verify soft-keyboard, cursor/selection, pulley-menu, and page-stack back behavior on the target SailfishOS device.
+- After this works reliably, consider visual rendering/editing for inline images, links, checkboxes, and code blocks without losing frontmatter or unfamiliar syntax.
 
 ## 5. Create and organize notes (implemented & verified on device)
 
@@ -112,7 +113,7 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 - Include the disclaimer that Portlight is independent and is not affiliated with or endorsed by Obsidian or its developers.
 - Start the page with the app name, then the app icon, then the disclaimer, then a short description, then a section for issue reporting with the github repo link
 
-## 17. Capture quick notes (implemented)
+## 17. Capture quick notes (implemented & verified on device)
 
 - Provide a quick capture flow for jotting down text without first browsing to or naming a note. Save quick notes in the configured vault folder, chosen through Settings with a folder picker; make the destination visible and handle a missing or unavailable folder clearly. See also [Daily notes](#18-support-daily-notes) for the related date-based note workflow and shared destination-setting behavior.
 - Offer quick-note capture as an optional cover action, alongside the existing action that creates a blank note in the current folder. The quick-note action should open the capture flow and save to its configured destination, regardless of the currently browsed folder.
@@ -124,6 +125,11 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 - Provide a daily-note action that opens today's note, creating it when it does not exist. Configure the destination folder and date-based filename format, and handle missing or unavailable folders clearly.
 - Keep daily notes distinct from standalone quick notes: a daily note is one note per date that is reopened and extended throughout the day. See also [Capture quick notes](#17-capture-quick-notes) for the related capture flow, optional cover entry point, and shared vault-folder setting; consider offering an explicit way to append a quick capture to today's note.
 - Define behavior for date changes, existing notes, and filename collisions, and open the daily note for continued editing after creation.
+
+## 19. Import from jolla-notes
+- Provide a button in the settings page to import all notes from the default sailfish notes app
+- The notes should be imported to the 'quick notes' folder
+- It might be that this is not possible for a sailjail enabled app. If so, see how filebrowser adds a 'run as root' option
 
 ## Inspiration
 

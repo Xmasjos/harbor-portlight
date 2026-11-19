@@ -1,5 +1,7 @@
 import QtQuick 2.0
 import Sailfish.Silica 1.0
+import Sailfish.WebView 1.0
+import Sailfish.WebEngine 1.0
 
 Page {
     allowedOrientations: Orientation.All
@@ -13,6 +15,7 @@ Page {
     property bool conflictDialogOpen: false
     property var applicationWindow
     property bool quickCapture: false
+    property bool useHtmlEditor: false
 
     function noteFolder(path) {
         var slash = path.lastIndexOf("/")
@@ -55,10 +58,10 @@ Page {
             notePage.showConflictDialog()
             return
         }
-        var result = vault.writeNote(notePage.notePath, editor.text, notePage.baselineContent)
+        var result = vault.writeNote(notePage.notePath, notePage.noteContent, notePage.baselineContent)
         if (result.ok) {
-            notePage.savedContent = editor.text
-            notePage.baselineContent = editor.text
+            notePage.savedContent = notePage.noteContent
+            notePage.baselineContent = notePage.noteContent
             notePage.saveStatus = automatic ? "Saved automatically" : "Saved"
         } else if (result.conflict) {
             notePage.externalChangeDetected = true
@@ -80,7 +83,8 @@ Page {
             notePage.saveStatus = "Reload failed: " + result.error
             return
         }
-        editor.text = result.content
+        notePage.noteContent = result.content
+        notePage.updateEditorText()
         notePage.savedContent = result.content
         notePage.baselineContent = result.content
         notePage.externalChangeDetected = false
@@ -94,10 +98,10 @@ Page {
         var base = fileName.replace(/\.md$/i, "")
         var destination = folder + base + " (copy).md"
         var suffix = 1
-        var result = vault.createNote(destination, editor.text)
+        var result = vault.createNote(destination, notePage.noteContent)
         while (!result.ok && result.error === "A note with that name already exists" && suffix < 1000) {
             destination = folder + base + " (copy " + suffix + ").md"
-            result = vault.createNote(destination, editor.text)
+            result = vault.createNote(destination, notePage.noteContent)
             suffix++
         }
         if (result.ok) {
@@ -110,6 +114,24 @@ Page {
     function showConflictDialog() {
         if (notePage.conflictDialogOpen) return
         pageStack.push(conflictDialog, { sourcePage: notePage })
+    }
+
+    function updateEditorText() {
+        if (sourceEditor.text !== noteContent) sourceEditor.text = noteContent
+        if (editorLoaded) {
+            webEditor.runJavaScript("window.setNoteText(" + JSON.stringify(noteContent) + ")")
+        }
+    }
+
+    property bool editorLoaded: false
+
+    onNoteContentChanged: {
+        if (sourceEditor.text !== noteContent) sourceEditor.text = noteContent
+        if (applicationWindow.autoSave && noteContent !== savedContent) autoSaveTimer.restart()
+        else autoSaveTimer.stop()
+    }
+    onUseHtmlEditorChanged: {
+        if (useHtmlEditor) updateEditorText()
     }
 
     onVisibleChanged: {
@@ -145,12 +167,16 @@ Page {
 
         PullDownMenu {
             MenuItem {
+                text: notePage.useHtmlEditor ? "Use source editor" : "Use HTML editor"
+                onClicked: notePage.useHtmlEditor = !notePage.useHtmlEditor
+            }
+            MenuItem {
                 text: "Save"
-                visible: editor.text !== notePage.savedContent
+                visible: notePage.noteContent !== notePage.savedContent
                 onClicked: notePage.saveNote(false)
             }
             MenuLabel {
-                text: (editor.text === notePage.savedContent ? "Saved · " : "")
+                text: (notePage.noteContent === notePage.savedContent ? "Saved · " : "")
                       + (notePage.noteFolder(notePage.notePath) || "Vault root")
             }
         }
@@ -175,20 +201,42 @@ Page {
                 }
             }
             TextArea {
-                id: editor
+                id: sourceEditor
+                visible: !notePage.useHtmlEditor
                 width: parent.width
                 text: notePage.noteContent
                 placeholderText: "Markdown note"
                 label: "Note"
                 height: Math.max(notePage.height - Theme.itemSizeLarge * 2, implicitHeight)
                 onTextChanged: {
-                    if (notePage.applicationWindow.autoSave && text !== notePage.savedContent) autoSaveTimer.restart()
-                    else autoSaveTimer.stop()
+                    if (notePage.noteContent !== text) notePage.noteContent = text
+                }
+            }
+            WebView {
+                id: webEditor
+                visible: notePage.useHtmlEditor
+                width: parent.width
+                height: Math.max(notePage.height - Theme.itemSizeLarge * 2, Theme.itemSizeLarge)
+                url: Qt.resolvedUrl("../editor.html")
+
+                onViewInitialized: {
+                    webEditor.addMessageListener("portlight:noteChanged")
+                    webEditor.loadFrameScript(Qt.resolvedUrl("../editor-frame.js"))
+                }
+                onLoadingChanged: {
+                    if (!loading) {
+                        notePage.editorLoaded = true
+                        notePage.updateEditorText()
+                    }
+                }
+                onRecvAsyncMessage: {
+                    if (message === "portlight:noteChanged" && data && typeof data.text === "string")
+                        notePage.noteContent = data.text
                 }
             }
             Label {
                 x: Theme.horizontalPageMargin
-                text: editor.text === notePage.savedContent ? notePage.saveStatus
+                text: notePage.noteContent === notePage.savedContent ? notePage.saveStatus
                                                         : (notePage.applicationWindow.autoSave ? "Saving…" : "Unsaved changes")
                 color: Theme.secondaryColor
             }
@@ -201,14 +249,14 @@ Page {
         interval: notePage.applicationWindow.saveDelay
         repeat: false
         onTriggered: {
-            if (notePage.applicationWindow.autoSave && editor.text !== notePage.savedContent) notePage.saveNote(true)
+            if (notePage.applicationWindow.autoSave && notePage.noteContent !== notePage.savedContent) notePage.saveNote(true)
         }
     }
 
     Connections {
         target: notePage.applicationWindow
         onAutoSaveChanged: {
-            if (notePage.applicationWindow.autoSave && editor.text !== notePage.savedContent) autoSaveTimer.restart()
+            if (notePage.applicationWindow.autoSave && notePage.noteContent !== notePage.savedContent) autoSaveTimer.restart()
             else autoSaveTimer.stop()
         }
         onSaveDelayChanged: {
@@ -224,7 +272,7 @@ Page {
             if (!result.ok) {
                 notePage.externalChangeDetected = true
                 notePage.saveStatus = "Not saved: the note changed or was removed elsewhere"
-            } else if (result.content === editor.text) {
+            } else if (result.content === notePage.noteContent) {
                 return
             } else if (result.content !== notePage.baselineContent) {
                 notePage.externalChangeDetected = true
