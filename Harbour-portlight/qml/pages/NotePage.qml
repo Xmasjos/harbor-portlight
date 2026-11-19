@@ -8,6 +8,9 @@ Page {
     property string noteContent: ""
     property string savedContent: noteContent
     property string saveStatus: ""
+    property string baselineContent: noteContent
+    property bool externalChangeDetected: false
+    property bool conflictDialogOpen: false
     property var applicationWindow
     property bool quickCapture: false
 
@@ -40,13 +43,73 @@ Page {
     }
 
     function saveNote(automatic) {
-        var result = vault.writeNote(notePage.notePath, editor.text)
+        if (notePage.externalChangeDetected) {
+            notePage.saveStatus = "Not saved: the note changed elsewhere"
+            notePage.showConflictDialog()
+            return
+        }
+        var disk = vault.readNote(notePage.notePath)
+        if (!disk.ok || disk.content !== notePage.baselineContent) {
+            notePage.externalChangeDetected = true
+            notePage.saveStatus = "Not saved: the note changed elsewhere"
+            notePage.showConflictDialog()
+            return
+        }
+        var result = vault.writeNote(notePage.notePath, editor.text, notePage.baselineContent)
         if (result.ok) {
             notePage.savedContent = editor.text
+            notePage.baselineContent = editor.text
             notePage.saveStatus = automatic ? "Saved automatically" : "Saved"
+        } else if (result.conflict) {
+            notePage.externalChangeDetected = true
+            notePage.saveStatus = "Not saved: the note changed elsewhere"
+            notePage.showConflictDialog()
         } else {
             notePage.saveStatus = "Save failed: " + result.error
         }
+    }
+
+    function refreshBaseline() {
+        var result = vault.readNote(notePage.notePath)
+        if (result.ok) notePage.baselineContent = result.content
+    }
+
+    function reloadExternalNote() {
+        var result = vault.readNote(notePage.notePath)
+        if (!result.ok) {
+            notePage.saveStatus = "Reload failed: " + result.error
+            return
+        }
+        editor.text = result.content
+        notePage.savedContent = result.content
+        notePage.baselineContent = result.content
+        notePage.externalChangeDetected = false
+        notePage.saveStatus = "Reloaded newer version"
+    }
+
+    function saveCurrentAsCopy() {
+        var fileName = notePage.notePath.substring(notePage.notePath.lastIndexOf("/") + 1)
+        var slash = notePage.notePath.lastIndexOf("/")
+        var folder = slash < 0 ? "" : notePage.notePath.substring(0, slash + 1)
+        var base = fileName.replace(/\.md$/i, "")
+        var destination = folder + base + " (copy).md"
+        var suffix = 1
+        var result = vault.createNote(destination, editor.text)
+        while (!result.ok && result.error === "A note with that name already exists" && suffix < 1000) {
+            destination = folder + base + " (copy " + suffix + ").md"
+            result = vault.createNote(destination, editor.text)
+            suffix++
+        }
+        if (result.ok) {
+            notePage.saveStatus = "Current text saved as " + destination.substring(destination.lastIndexOf("/") + 1)
+        } else {
+            notePage.saveStatus = "Copy failed: " + result.error
+        }
+    }
+
+    function showConflictDialog() {
+        if (notePage.conflictDialogOpen) return
+        pageStack.push(conflictDialog, { sourcePage: notePage })
     }
 
     onVisibleChanged: {
@@ -54,14 +117,22 @@ Page {
             applicationWindow.currentNote = notePath
             applicationWindow.currentFolder = noteFolder(notePath)
         }
+        if (visible) vault.watchNote(notePath)
+        else vault.unwatchNote()
     }
     onNotePathChanged: {
         if (visible && applicationWindow) {
             applicationWindow.currentNote = notePath
             applicationWindow.currentFolder = noteFolder(notePath)
         }
+        if (visible) vault.watchNote(notePath)
+    }
+    Component.onCompleted: {
+        refreshBaseline()
+        if (visible) vault.watchNote(notePath)
     }
     Component.onDestruction: {
+        vault.unwatchNote()
         if (quickCapture) {
             var stored = vault.readNote(notePath)
             if (stored.ok && !stored.content.trim().length) vault.deleteNote(notePath)
@@ -142,6 +213,69 @@ Page {
         }
         onSaveDelayChanged: {
             if (autoSaveTimer.running) autoSaveTimer.restart()
+        }
+    }
+
+    Connections {
+        target: vault
+        onNoteChanged: {
+            if (relativePath !== notePage.notePath) return
+            var result = vault.readNote(relativePath)
+            if (!result.ok) {
+                notePage.externalChangeDetected = true
+                notePage.saveStatus = "Not saved: the note changed or was removed elsewhere"
+            } else if (result.content === editor.text) {
+                return
+            } else if (result.content !== notePage.baselineContent) {
+                notePage.externalChangeDetected = true
+                notePage.saveStatus = "The note changed elsewhere"
+            }
+        }
+    }
+
+    Component {
+        id: conflictDialog
+        Dialog {
+            property var sourcePage
+            canAccept: false
+            onOpened: sourcePage.conflictDialogOpen = true
+            onDone: sourcePage.conflictDialogOpen = false
+
+            Column {
+                width: parent.width
+                spacing: Theme.paddingLarge
+                DialogHeader {
+                    title: "Note changed elsewhere"
+                }
+                Label {
+                    x: Theme.horizontalPageMargin
+                    width: parent.width - Theme.horizontalPageMargin * 2
+                    wrapMode: Text.Wrap
+                    text: "A newer version exists outside this app. Choose what to do before saving."
+                    color: Theme.highlightColor
+                }
+                Button {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "Reload newer version"
+                    onClicked: {
+                        sourcePage.reloadExternalNote()
+                        pageStack.pop()
+                    }
+                }
+                Button {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "Save current text as copy"
+                    onClicked: {
+                        sourcePage.saveCurrentAsCopy()
+                        pageStack.pop()
+                    }
+                }
+                Button {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "Cancel"
+                    onClicked: pageStack.pop()
+                }
+            }
         }
     }
 }

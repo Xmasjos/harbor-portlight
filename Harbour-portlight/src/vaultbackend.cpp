@@ -113,6 +113,14 @@ VaultBackend::VaultBackend(QObject *parent)
 {
     connect(&m_watcher, &QFileSystemWatcher::directoryChanged,
             this, &VaultBackend::folderChanged);
+    connect(&m_watcher, &QFileSystemWatcher::fileChanged,
+            this, [this](const QString &path) {
+        if (path != m_watchedNotePath) return;
+        if (QFileInfo::exists(path) && !m_watcher.files().contains(path)) {
+            m_watcher.addPath(path);
+        }
+        emit noteChanged(QDir(m_vaultPath).relativeFilePath(path));
+    });
 }
 
 QString VaultBackend::vaultPath() const
@@ -155,6 +163,25 @@ void VaultBackend::watchFolder(const QString &relativeFolder)
         return;
     }
     m_watcher.addPath(folder);
+}
+
+void VaultBackend::watchNote(const QString &relativePath)
+{
+    const QStringList files = m_watcher.files();
+    if (!files.isEmpty()) {
+        m_watcher.removePaths(files);
+    }
+
+    const QString path = safeNotePath(m_vaultPath, relativePath);
+    m_watchedNotePath = path;
+    if (!path.isEmpty()) {
+        m_watcher.addPath(path);
+    }
+}
+
+void VaultBackend::unwatchNote()
+{
+    watchNote(QString());
 }
 
 QVariantMap VaultBackend::listVaultEntries(const QString &relativeFolder) const
@@ -298,7 +325,8 @@ QVariantMap VaultBackend::readNote(const QString &relativePath) const
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), file.errorString()}};
     }
 
-    return {{QStringLiteral("ok"), true}, {QStringLiteral("content"), QString::fromUtf8(file.readAll())}};
+    return {{QStringLiteral("ok"), true},
+            {QStringLiteral("content"), QString::fromUtf8(file.readAll())}};
 }
 
 QString VaultBackend::imageUrl(const QString &relativePath) const
@@ -309,11 +337,24 @@ QString VaultBackend::imageUrl(const QString &relativePath) const
             ? QUrl::fromLocalFile(path).toString() : QString();
 }
 
-QVariantMap VaultBackend::writeNote(const QString &relativePath, const QString &content) const
+QVariantMap VaultBackend::writeNote(const QString &relativePath, const QString &content,
+                                    const QString &expectedContent) const
 {
     const QString path = safeDestinationPath(m_vaultPath, relativePath);
     if (path.isEmpty()) {
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Note is outside the vault")}};
+    }
+    QFile current(path);
+    if (current.open(QIODevice::ReadOnly)) {
+        if (QString::fromUtf8(current.readAll()) != expectedContent) {
+            return {{QStringLiteral("ok"), false},
+                    {QStringLiteral("conflict"), true},
+                    {QStringLiteral("error"), QStringLiteral("The note changed outside this app")}};
+        }
+    } else {
+        return {{QStringLiteral("ok"), false},
+                {QStringLiteral("conflict"), true},
+                {QStringLiteral("error"), QStringLiteral("The note changed outside this app")}};
     }
     QSaveFile file(path);
     const QByteArray bytes = content.toUtf8();
