@@ -32,8 +32,8 @@ Page {
         var folder = slash < 0 ? "" : notePage.notePath.substring(0, slash + 1)
         var fileName = cleanName.substring(cleanName.lastIndexOf("/") + 1)
         if (!/\.[^./]+$/.test(fileName)) fileName += ".md"
-        var destination = folder + fileName
-        if (destination === notePage.notePath) return
+        var destination = "" + folder + fileName // Prepend empty string to hint the editor
+        if (destination === notePath) return
         var result = vault.moveNote(notePage.notePath, destination)
         if (result.ok) {
             notePage.notePath = result.path
@@ -150,6 +150,7 @@ Page {
         if (visible) vault.watchNote(notePath)
     }
     Component.onCompleted: {
+        notePage.savedContent = notePage.noteContent
         refreshBaseline()
         if (visible) vault.watchNote(notePath)
     }
@@ -229,7 +230,7 @@ Page {
                         notePage.updateEditorText()
                     }
                 }
-                onRecvAsyncMessage: {
+                onRecvAsyncMessage: function(message, data) {
                     if (message === "portlight:noteChanged" && data && typeof data.text === "string")
                         notePage.noteContent = data.text
                 }
@@ -266,7 +267,7 @@ Page {
 
     Connections {
         target: vault
-        onNoteChanged: {
+        onNoteChanged: function(relativePath) {
             if (relativePath !== notePage.notePath) return
             var result = vault.readNote(relativePath)
             if (!result.ok) {

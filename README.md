@@ -42,7 +42,7 @@ The initial scope excludes Obsidian's proprietary app/runtime, automatic communi
 ## Technical direction
 
 1. **Silica / QML shell:** vault selection, native navigation, menus, settings, file picker, lifecycle, and back-button behavior.
-2. **Editing UI:** use a bundled Gecko WebView for the text-only Markdown editor, while retaining native Silica for navigation and app controls. Keep Markdown as the source of truth; treat visual rendering/editing as a later step.
+2. **Editing UI:** the optional bundled Gecko WebView in [NotePage.qml](Harbour-portlight/qml/pages/NotePage.qml) hosts the plain-text Markdown editor ([editor.html](Harbour-portlight/qml/editor.html)); it is not a Markdown preview or an Obsidian runtime. Edits are relayed with Sailfish WebView frame-script async messages ([API reference](https://github.com/sailfishos/sailfish-components-webview/blob/e307cc1683cb55242efadbd8859b93aef96e1f8f/doc/sailfish-webview-webviewadditional.qdoc)). Keep vault access, navigation, and app controls native, and Markdown as the source of truth; visual rendering/editing is deferred.
 3. **Native vault access:** narrow, validated operations list, search, read, and atomically write Markdown notes within the current vault. Do not expose unrestricted filesystem access to page JavaScript.
 4. **Reliable saves:** save atomically, preserve Unicode and note contents, and add external-change detection before considering the workflow complete.
 
