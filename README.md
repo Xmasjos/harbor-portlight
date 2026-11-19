@@ -42,7 +42,7 @@ The initial scope excludes Obsidian's proprietary app/runtime, automatic communi
 ## Technical direction
 
 1. **Silica / QML shell:** vault selection, native navigation, menus, settings, file picker, lifecycle, and back-button behavior.
-2. **Editing UI:** keep the first editor as a native Silica `TextArea` while proving safe on-device file editing. A bundled WebView editor remains an option; evaluate CodeMirror 6 and a local Markdown parser against the device's Gecko before choosing it.
+2. **Editing UI:** use a bundled Gecko WebView for the text-only Markdown editor, while retaining native Silica for navigation and app controls. Keep Markdown as the source of truth; treat visual rendering/editing as a later step.
 3. **Native vault access:** narrow, validated operations list, search, read, and atomically write Markdown notes within the current vault. Do not expose unrestricted filesystem access to page JavaScript.
 4. **Reliable saves:** save atomically, preserve Unicode and note contents, and add external-change detection before considering the workflow complete.
 
@@ -50,7 +50,7 @@ The initial scope excludes Obsidian's proprietary app/runtime, automatic communi
 
 ### 1. Prove the device stack
 
-On the target Xperia 10 II and SailfishOS release, launch a minimal Silica app with a WebView loading bundled assets. Check the actual Gecko JavaScript/CSS support, editor compatibility, startup and memory cost, keyboard and selection behavior, rotation, and back navigation. Keep a simpler editor/parser fallback available until this proof succeeds.
+On the target Xperia 10 II and SailfishOS release, verify the bundled text editor's Gecko compatibility, startup and memory cost, soft keyboard, cursor/selection, Silica pulley menu, page-stack back navigation, and exact Markdown saves. Defer visual Markdown rendering/editing until this baseline works.
 
 ### 2. Read and write a chosen vault
 
