@@ -79,8 +79,8 @@ Page {
                 onClicked: notePage.saveNote(false)
             }
             MenuLabel {
-                text: "Saved"
-                visible: editor.text === notePage.savedContent
+                text: (editor.text === notePage.savedContent ? "Saved · " : "")
+                      + (notePage.noteFolder(notePage.notePath) || "Vault root")
             }
         }
 
@@ -88,16 +88,20 @@ Page {
             id: column
             width: notePage.width
             spacing: Theme.paddingMedium
-            PageHeader { title: "" }
-            TextField {
-                id: titleField
-                x: Theme.horizontalPageMargin
-                width: parent.width - 2 * Theme.horizontalPageMargin
-                text: notePage.notePath.substring(notePage.notePath.lastIndexOf("/") + 1).replace(/\.md$/i, "")
-                label: "Note name"
-                placeholderText: "Untitled"
-                EnterKey.onClicked: notePage.renameNote(text)
-                onFocusChanged: if (!focus) notePage.renameNote(text)
+            PageHeader {
+                id: pageHeader
+                title: ""
+                TextField {
+                    id: titleField
+                    parent: pageHeader.extraContent
+                    y: Theme.paddingSmall
+                    width: parent.width
+                    text: notePage.notePath.substring(notePage.notePath.lastIndexOf("/") + 1).replace(/\.md$/i, "")
+                    label: "Note name"
+                    placeholderText: "Untitled"
+                    EnterKey.onClicked: notePage.renameNote(text)
+                    onFocusChanged: if (!focus) notePage.renameNote(text)
+                }
             }
             TextArea {
                 id: editor
