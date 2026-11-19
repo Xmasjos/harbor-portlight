@@ -24,7 +24,7 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 - Keep **Create note** and **Create folder** anchored to the current folder, with a name field as the primary input. Do not open the folder picker by default: users are already browsing the target location. If creation needs a different location, offer an explicit “Choose location” action that uses the same vault-scoped picker.
 - Keep picker destinations relative to the vault and prevent moving a folder into itself or one of its descendants. Refresh the visible folder after a successful action and navigate to the new location only when appropriate.
 
-## 2. Protect notes changed elsewhere
+## 2. Protect notes changed elsewhere (implemented & verified on device)
 
 - Detect when a note changes on another device while it is open.
 - Before saving over a changed file, offer a safe choice such as reload or save the current text as a separate copy.
