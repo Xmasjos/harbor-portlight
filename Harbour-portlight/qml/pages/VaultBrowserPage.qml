@@ -1,6 +1,7 @@
 import QtQuick 2.0
 import Sailfish.Silica 1.0
 import Sailfish.Pickers 1.0
+import "../components"
 
 Page {
     allowedOrientations: Orientation.All
@@ -240,112 +241,62 @@ Page {
                 truncationMode: TruncationMode.Fade
             }
         }
-        delegate: ListItem {
-            id: noteDelegate
-            property var entry: ({ type: type, name: name, path: path, excerpt: excerpt, hasItems: hasItems })
+        delegate: VaultEntryDelegate {
+            entry: ({ type: type, name: name, path: path, excerpt: excerpt, hasItems: hasItems })
             width: listView.width
-            contentHeight: resultColumn.height + 2 * Theme.paddingMedium
-            menu: ContextMenu {
-                MenuItem {
-                    text: "Rename"
-                    onClicked: {
-                        var sourcePath = noteDelegate.entry.path
-                        var isFolder = noteDelegate.entry.type === "folder"
-                        vaultBrowserPage.askPath(isFolder ? "Rename folder" : "Rename note", sourcePath,
-                                     "Name and extension", function(path, dialog) {
-                            var result = isFolder ? vault.moveFolder(sourcePath, path)
-                                                  : vault.moveNote(sourcePath, path)
-                            if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
-                            else dialog.returnToSource(result.error)
-                        }, vaultBrowserPageComponent, "destination",
-                        { currentFolder: vaultBrowserPage.parentFolder(sourcePath) })
-                    }
-                }
-                MenuItem {
-                    text: "Copy"
-                    onClicked: {
-                        var sourcePath = noteDelegate.entry.path
-                        var isFolder = noteDelegate.entry.type === "folder"
-                        var defaultPath = isFolder ? sourcePath + " copy"
-                                                    : sourcePath.replace(/\.md$/i, " copy.md")
-                        vaultBrowserPage.askPath(isFolder ? "Copy folder to" : "Copy note to", defaultPath,
-                                     "Destination path", function(path, dialog) {
-                            var result = isFolder ? vault.copyFolder(sourcePath, path)
-                                                  : vault.copyNote(sourcePath, path)
-                            if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
-                            else dialog.returnToSource(result.error)
-                        }, vaultBrowserPageComponent, "destination",
-                        { currentFolder: vaultBrowserPage.parentFolder(defaultPath) })
-                    }
-                }
-                MenuItem {
-                    text: "Move"
-                    onClicked: {
-                        pageStack.push(moveFolderPicker, {
-                            sourcePath: noteDelegate.entry.path,
-                            isFolder: noteDelegate.entry.type === "folder"
-                        })
-                    }
-                }
-                MenuItem {
-                    text: "Delete"
-                    onClicked: {
-                        var sourcePath = noteDelegate.entry.path
-                        var isFolder = noteDelegate.entry.type === "folder"
-                        noteDelegate.remorseDelete(function() {
-                            if (!isFolder) {
-                                vaultBrowserPage.deleteNote(sourcePath)
-                                return
-                            }
-                            var result = vault.deleteFolder(sourcePath)
-                            if (result.ok) vaultBrowserPage.refreshFolder()
-                            else vaultBrowserPage.scanStatus = result.error
-                        })
-                    }
+            searchActive: vaultBrowserPage.searchQuery.trim().length > 0
+            iconName: vaultBrowserPage.iconForEntry(entry)
+            renameCallback: function(entry) {
+                var sourcePath = entry.path
+                var isFolder = entry.type === "folder"
+                vaultBrowserPage.askPath(isFolder ? "Rename folder" : "Rename note", sourcePath,
+                             "Name and extension", function(path, dialog) {
+                    var result = isFolder ? vault.moveFolder(sourcePath, path)
+                                          : vault.moveNote(sourcePath, path)
+                    if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
+                    else dialog.returnToSource(result.error)
+                }, vaultBrowserPageComponent, "destination",
+                { currentFolder: vaultBrowserPage.parentFolder(sourcePath) })
+            }
+            copyCallback: function(entry) {
+                var sourcePath = entry.path
+                var isFolder = entry.type === "folder"
+                var defaultPath = isFolder ? sourcePath + " copy"
+                                            : sourcePath.replace(/\.md$/i, " copy.md")
+                vaultBrowserPage.askPath(isFolder ? "Copy folder to" : "Copy note to", defaultPath,
+                             "Destination path", function(path, dialog) {
+                    var result = isFolder ? vault.copyFolder(sourcePath, path)
+                                          : vault.copyNote(sourcePath, path)
+                    if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
+                    else dialog.returnToSource(result.error)
+                }, vaultBrowserPageComponent, "destination",
+                { currentFolder: vaultBrowserPage.parentFolder(defaultPath) })
+            }
+            moveCallback: function(entry) {
+                pageStack.push(moveFolderPicker, {
+                    sourcePath: entry.path,
+                    isFolder: entry.type === "folder"
+                })
+            }
+            deleteCallback: function(entry) {
+                if (entry.type !== "folder") {
+                    vaultBrowserPage.deleteNote(entry.path)
+                } else {
+                    var result = vault.deleteFolder(entry.path)
+                    if (result.ok) vaultBrowserPage.refreshFolder()
+                    else vaultBrowserPage.scanStatus = result.error
                 }
             }
-
-            Column {
-                id: resultColumn
-                x: Theme.horizontalPageMargin + itemIcon.width + Theme.paddingMedium
-                width: parent.width - x - Theme.horizontalPageMargin
-                anchors.verticalCenter: parent.verticalCenter
-                Label {
-                    width: parent.width
-                    text: vaultBrowserPage.searchQuery.trim().length ? path : name
-                    truncationMode: TruncationMode.Fade
-                    color: noteDelegate.highlighted ? Theme.highlightColor : Theme.primaryColor
-                }
-                Label {
-                    width: parent.width
-                    text: excerpt || ""
-                    visible: text.length > 0
-                    font.pixelSize: Theme.fontSizeExtraSmall
-                    color: Theme.secondaryColor
-                    truncationMode: TruncationMode.Fade
-                }
-            }
-
-            Image {
-                id: itemIcon
-                x: Theme.horizontalPageMargin
-                anchors.verticalCenter: parent.verticalCenter
-                width: Theme.iconSizeMedium
-                height: Theme.iconSizeMedium
-                source: "image://theme/" + vaultBrowserPage.iconForEntry(noteDelegate.entry)
-                        + "?" + (noteDelegate.highlighted ? Theme.highlightColor : Theme.primaryColor)
-            }
-
-            onClicked: {
-                if (type === "folder") {
+            activateCallback: function(entry) {
+                if (entry.type === "folder") {
                     pageStack.animatorPush(vaultBrowserPageComponent, {
-                        currentFolder: path,
+                        currentFolder: entry.path,
                         applicationWindow: vaultBrowserPage.applicationWindow
                     })
-                } else if (type === "image") {
-                    openImage(path)
-                } else if (type === "note") {
-                    openNote(path)
+                } else if (entry.type === "image") {
+                    vaultBrowserPage.openImage(entry.path)
+                } else if (entry.type === "note") {
+                    vaultBrowserPage.openNote(entry.path)
                 } else {
                     vaultBrowserPage.scanStatus = "Unsupported file type"
                 }
