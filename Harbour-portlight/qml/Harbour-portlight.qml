@@ -93,7 +93,7 @@ ApplicationWindow {
         }
     }
 
-    initialPage: notesPageFactory
+    initialPage: vaultBrowserPageFactory
     cover: Component {
         CoverPage {
             locationText: app.currentNote.length ? app.currentNote
@@ -125,10 +125,10 @@ ApplicationWindow {
     }
 
     Component {
-        id: notesPageFactory
-        NotesPage {
+        id: vaultBrowserPageFactory
+        VaultBrowserPage {
             applicationWindow: app
-            notesPageComponent: notesPageFactory
+            vaultBrowserPageComponent: vaultBrowserPageFactory
         }
     }
 }
