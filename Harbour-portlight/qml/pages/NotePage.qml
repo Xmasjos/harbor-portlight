@@ -33,7 +33,7 @@ Page {
         var fileName = cleanName.substring(cleanName.lastIndexOf("/") + 1)
         if (!/\.[^./]+$/.test(fileName)) fileName += ".md"
         var destination = "" + folder + fileName // Prepend empty string to hint the editor
-        if (destination === notePath) return
+        if (destination === notePage.notePath) return
         var result = vault.moveNote(notePage.notePath, destination)
         if (result.ok) {
             notePage.notePath = result.path
@@ -204,7 +204,7 @@ Page {
                     label: "Note name"
                     placeholderText: "Untitled"
                     EnterKey.onClicked: notePage.renameNote(text)
-                    onFocusChanged: if (!focus) notePage.renameNote(text)
+                    onActiveFocusChanged: if (!activeFocus) notePage.renameNote(text)
                 }
             }
             TextArea {
