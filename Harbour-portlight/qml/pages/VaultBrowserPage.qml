@@ -60,6 +60,7 @@ Page {
         if (!result.ok) {
             updateNotes([], resetPosition)
             scanStatus = result.error
+            console.warn("[VaultBrowserPage] Unable to list vault entries:", result.error)
             return
         }
 
@@ -84,6 +85,7 @@ Page {
             })
         } else {
             scanStatus = result.error
+            console.warn("[VaultBrowserPage] Unable to open note:", result.error)
         }
     }
 
@@ -118,6 +120,7 @@ Page {
             })
         } else {
             scanStatus = result.error
+            console.warn("[VaultBrowserPage] Unable to create note:", result.error)
         }
     }
 
@@ -330,6 +333,7 @@ Page {
                 vaultBrowserPage.refreshPending = false
                 vaultBrowserPage.updateNotes([], true)
                 scanStatus = result.error
+                console.warn("[VaultBrowserPage] Note search failed:", result.error)
                 return
             }
             var matches = result.matches
@@ -340,6 +344,7 @@ Page {
             scanStatus = result.matches.length
                     ? result.matches.length + " matches across vault"
                     : "No matching notes"
+            console.debug("[VaultBrowserPage] Note search completed; matches:", result.matches.length)
         }
     }
 

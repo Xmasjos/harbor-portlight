@@ -46,6 +46,16 @@ The initial scope excludes Obsidian's proprietary app/runtime, automatic communi
 3. **Native vault access:** narrow, validated operations list, search, read, and atomically write Markdown notes within the current vault. Do not expose unrestricted filesystem access to page JavaScript.
 4. **Reliable saves:** save atomically, preserve Unicode and note contents, and add external-change detection before considering the workflow complete.
 
+## Logging
+
+The app uses Qt logging categories: `portlight.app`, `portlight.vault`, and `portlight.storage`. QML diagnostics use the Qt `console` API (`qml` category) and include the originating page in each message. By default, release builds log critical messages only; debug builds log info and more severe messages. Configure categories and message levels before launching the app with `QT_LOGGING_RULES` to override those defaults, for example:
+
+```sh
+export QT_LOGGING_RULES='portlight.*.debug=true;qml.debug=true'
+```
+
+Rules can be narrowed to one category (for example, `portlight.storage.debug=true`) or set for individual levels (`.debug`, `.info`, `.warning`, `.critical`). The environment must be set in the app launcher's environment; changes take effect after restarting the app. A `QT_LOGGING_CONF` file also takes precedence over the built-in defaults. Logs intentionally omit note contents, search terms, and file paths.
+
 ## Roadmap
 
 ### 1. Prove the device stack
