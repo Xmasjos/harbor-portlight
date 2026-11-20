@@ -24,13 +24,13 @@ DISTFILES += qml/Harbour-portlight.qml \
     qml/components/VaultEntryDelegate.qml \
     qml/components/SourceNoteEditor.qml \
     qml/components/WebNoteEditor.qml \
-    qml/editor-frame.js \
-    qml/editor.html \
     qml/pages/VaultBrowserPage.qml \
     qml/pages/NotePage.qml \
     qml/pages/ImagePage.qml \
     qml/pages/SettingsPage.qml \
     qml/pages/QuickCaptureErrorPage.qml \
+    qml/editor/index.html \
+    qml/editor/frame.js \
     rpm/Harbour-portlight.changes.in \
     rpm/Harbour-portlight.changes.run.in \
     rpm/Harbour-portlight.spec \
