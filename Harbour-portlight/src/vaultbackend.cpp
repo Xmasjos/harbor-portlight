@@ -313,6 +313,9 @@ QVariantMap VaultBackend::searchNotes(const QString &query) const
             excerpt = QStringLiteral("Title match");
         }
         matches.append(QVariantMap{
+            {QStringLiteral("type"), QStringLiteral("note")},
+            {QStringLiteral("hasItems"), false},
+            {QStringLiteral("name"), QFileInfo(path).fileName()},
             {QStringLiteral("path"), relativePath},
             {QStringLiteral("excerpt"), excerpt}
         });
