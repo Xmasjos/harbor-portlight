@@ -48,6 +48,7 @@ Page {
     function saveNote(automatic) {
         if (notePage.externalChangeDetected) {
             notePage.saveStatus = "Not saved: the note changed elsewhere"
+            console.warn("[NotePage] Note save blocked by an external change")
             notePage.showConflictDialog()
             return
         }
@@ -55,6 +56,7 @@ Page {
         if (!disk.ok || disk.content !== notePage.baselineContent) {
             notePage.externalChangeDetected = true
             notePage.saveStatus = "Not saved: the note changed elsewhere"
+            console.warn("[NotePage] Note save blocked because the note changed outside the editor")
             notePage.showConflictDialog()
             return
         }
@@ -63,12 +65,15 @@ Page {
             notePage.savedContent = notePage.noteContent
             notePage.baselineContent = notePage.noteContent
             notePage.saveStatus = automatic ? "Saved automatically" : "Saved"
+            console.debug("[NotePage] Note saved")
         } else if (result.conflict) {
             notePage.externalChangeDetected = true
             notePage.saveStatus = "Not saved: the note changed elsewhere"
+            console.warn("[NotePage] Note save conflicted with an external change")
             notePage.showConflictDialog()
         } else {
             notePage.saveStatus = "Save failed: " + result.error
+            console.warn("[NotePage] Note save failed:", result.error)
         }
     }
 
@@ -81,6 +86,7 @@ Page {
         var result = vault.readNote(notePage.notePath)
         if (!result.ok) {
             notePage.saveStatus = "Reload failed: " + result.error
+            console.warn("[NotePage] Unable to reload note:", result.error)
             return
         }
         notePage.noteContent = result.content

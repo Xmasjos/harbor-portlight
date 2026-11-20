@@ -4,11 +4,15 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
+#include <QLoggingCategory>
 #include <QMimeDatabase>
 #include <QMimeType>
 #include <QSaveFile>
 #include <QVariantList>
 #include <QUrl>
+
+Q_LOGGING_CATEGORY(lcVault, "portlight.vault")
+Q_LOGGING_CATEGORY(lcStorage, "portlight.storage")
 
 namespace {
 bool isTextNote(const QFileInfo &file, const QMimeDatabase &mimeDatabase)
@@ -133,10 +137,12 @@ bool VaultBackend::setVaultPath(const QString &path)
     const QString canonicalPath = QFileInfo(path).canonicalFilePath();
     if (canonicalPath.isEmpty() || !QFileInfo(canonicalPath).isDir()
             || !QFileInfo(canonicalPath).isReadable()) {
+        qCWarning(lcVault) << "Rejected inaccessible vault directory";
         return false;
     }
     if (m_vaultPath == canonicalPath) return true;
     m_vaultPath = canonicalPath;
+    qCDebug(lcVault) << "Vault directory changed";
     emit vaultPathChanged();
     emit folderChanged();
     return true;
@@ -249,6 +255,7 @@ QVariantMap VaultBackend::listVaultEntries(const QString &relativeFolder) const
         });
     }
 
+    qCDebug(lcVault) << "Listed vault entries:" << entries.size();
     return {{QStringLiteral("ok"), true}, {QStringLiteral("entries"), entries}};
 }
 
@@ -310,6 +317,7 @@ QVariantMap VaultBackend::searchNotes(const QString &query) const
             {QStringLiteral("excerpt"), excerpt}
         });
     }
+    qCDebug(lcVault) << "Note search completed; matches:" << matches.size();
     return {{QStringLiteral("ok"), true}, {QStringLiteral("matches"), matches}};
 }
 
@@ -322,9 +330,11 @@ QVariantMap VaultBackend::readNote(const QString &relativePath) const
 
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qCWarning(lcStorage) << "Unable to read note:" << file.errorString();
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), file.errorString()}};
     }
 
+    qCDebug(lcStorage) << "Note read";
     return {{QStringLiteral("ok"), true},
             {QStringLiteral("content"), QString::fromUtf8(file.readAll())}};
 }
@@ -347,11 +357,13 @@ QVariantMap VaultBackend::writeNote(const QString &relativePath, const QString &
     QFile current(path);
     if (current.open(QIODevice::ReadOnly)) {
         if (QString::fromUtf8(current.readAll()) != expectedContent) {
+            qCWarning(lcStorage) << "Note save blocked by an external change";
             return {{QStringLiteral("ok"), false},
                     {QStringLiteral("conflict"), true},
                     {QStringLiteral("error"), QStringLiteral("The note changed outside this app")}};
         }
     } else {
+        qCWarning(lcStorage) << "Note save blocked because the current note could not be read";
         return {{QStringLiteral("ok"), false},
                 {QStringLiteral("conflict"), true},
                 {QStringLiteral("error"), QStringLiteral("The note changed outside this app")}};
@@ -360,8 +372,10 @@ QVariantMap VaultBackend::writeNote(const QString &relativePath, const QString &
     const QByteArray bytes = content.toUtf8();
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)
             || file.write(bytes) != bytes.size() || !file.commit()) {
+        qCWarning(lcStorage) << "Unable to save note:" << file.errorString();
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), file.errorString()}};
     }
+    qCDebug(lcStorage) << "Note saved";
     return {{QStringLiteral("ok"), true}};
 }
 
@@ -378,8 +392,10 @@ QVariantMap VaultBackend::createNote(const QString &relativePath, const QString 
     const QByteArray bytes = content.toUtf8();
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)
             || file.write(bytes) != bytes.size() || !file.commit()) {
+        qCWarning(lcStorage) << "Unable to create note:" << file.errorString();
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), file.errorString()}};
     }
+    qCDebug(lcStorage) << "Note created";
     return {{QStringLiteral("ok"), true}};
 }
 
@@ -400,6 +416,7 @@ QVariantMap VaultBackend::createFolder(const QString &relativePath) const
     if (QFileInfo::exists(path) || !QDir().mkdir(path)) {
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Folder already exists or could not be created")}};
     }
+    qCDebug(lcStorage) << "Folder created";
     return {{QStringLiteral("ok"), true}};
 }
 
@@ -410,8 +427,10 @@ QVariantMap VaultBackend::deleteFolder(const QString &relativePath) const
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Invalid folder path")}};
     }
     if (!QDir(path).removeRecursively()) {
+        qCWarning(lcStorage) << "Unable to delete folder";
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Folder could not be deleted")}};
     }
+    qCDebug(lcStorage) << "Folder deleted";
     return {{QStringLiteral("ok"), true}};
 }
 
@@ -426,8 +445,10 @@ QVariantMap VaultBackend::copyFolder(const QString &relativePath, const QString 
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Invalid or existing destination folder")}};
     }
     if (!copyDirectory(source, destination)) {
+        qCWarning(lcStorage) << "Unable to copy folder";
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Folder could not be copied")}};
     }
+    qCDebug(lcStorage) << "Folder copied";
     return {{QStringLiteral("ok"), true}};
 }
 
@@ -442,8 +463,10 @@ QVariantMap VaultBackend::moveFolder(const QString &relativePath, const QString 
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Invalid or existing destination folder")}};
     }
     if (!QDir().rename(source, destination)) {
+        qCWarning(lcStorage) << "Unable to move folder";
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Folder could not be moved")}};
     }
+    qCDebug(lcStorage) << "Folder moved";
     return {{QStringLiteral("ok"), true}};
 }
 
@@ -454,8 +477,10 @@ QVariantMap VaultBackend::deleteNote(const QString &relativePath) const
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Note is outside the vault")}};
     }
     if (!QFile::remove(path)) {
+        qCWarning(lcStorage) << "Unable to delete note";
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Note could not be deleted")}};
     }
+    qCDebug(lcStorage) << "Note deleted";
     return {{QStringLiteral("ok"), true}};
 }
 
@@ -467,8 +492,10 @@ QVariantMap VaultBackend::copyNote(const QString &relativePath, const QString &d
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Invalid note path")}};
     }
     if (QFileInfo::exists(destination) || !QFile::copy(source, destination)) {
+        qCWarning(lcStorage) << "Unable to copy note";
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Destination exists or note could not be copied")}};
     }
+    qCDebug(lcStorage) << "Note copied";
     return {{QStringLiteral("ok"), true}, {QStringLiteral("path"), QDir(m_vaultPath).relativeFilePath(destination)}};
 }
 
@@ -480,7 +507,9 @@ QVariantMap VaultBackend::moveNote(const QString &relativePath, const QString &d
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Invalid note path")}};
     }
     if (QFileInfo::exists(destination) || !QFile::rename(source, destination)) {
+        qCWarning(lcStorage) << "Unable to move note";
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Destination exists or note could not be moved")}};
     }
+    qCDebug(lcStorage) << "Note moved";
     return {{QStringLiteral("ok"), true}, {QStringLiteral("path"), QDir(m_vaultPath).relativeFilePath(destination)}};
 }
