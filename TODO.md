@@ -43,7 +43,7 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 - Move the source editor and WebView editor into separate QML components with a shared title/text interface.
 - Keep note state, vault access, navigation, renaming, saving, and external-change handling native in `NotePage`.
 
-### 4.2 Include the note filename in the HTML editor
+### 4.2 Include the note filename in the HTML editor (implemented & verified on device)
 
 - Show and edit the filename in the WebView editor; keep the native title field when using the source editor.
 - Send title changes to QML through validated WebView messages and let QML perform the file rename.

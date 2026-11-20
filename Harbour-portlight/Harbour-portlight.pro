@@ -14,6 +14,9 @@ TARGET = Harbour-portlight
 
 CONFIG += sailfishapp
 
+CODEMIRROR_BUNDLE = qml/editor/assets/codemirror.bundle.js
+!exists($$CODEMIRROR_BUNDLE): error("Missing $$CODEMIRROR_BUNDLE. Run npm ci && npm run build from ../portlight-codemirror-editor.")
+
 SOURCES += src/main.cpp \
     src/vaultbackend.cpp
 
@@ -31,6 +34,8 @@ DISTFILES += qml/Harbour-portlight.qml \
     qml/pages/QuickCaptureErrorPage.qml \
     qml/editor/index.html \
     qml/editor/frame.js \
+    $$CODEMIRROR_BUNDLE \
+    qml/editor/assets/codemirror.LICENSE.txt \
     rpm/Harbour-portlight.changes.in \
     rpm/Harbour-portlight.changes.run.in \
     rpm/Harbour-portlight.spec \

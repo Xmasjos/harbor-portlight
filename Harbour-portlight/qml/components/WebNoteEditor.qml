@@ -9,13 +9,16 @@ Item {
     property string text
     property string status
     property bool editorLoaded: false
+    property bool handlingEditorText: false
 
     signal textEdited(string text)
     signal titleEdited(string title)
 
     function updateText() {
-        if (editor.editorLoaded)
+        if (editor.editorLoaded) {
+            console.debug("[WebNoteEditor] sync-to-page length=" + editor.text.length)
             webView.runJavaScript("window.setNoteText(" + JSON.stringify(editor.text) + ")")
+        }
     }
 
     function updateTitle() {
@@ -28,7 +31,12 @@ Item {
             webView.runJavaScript("window.setNoteStatus(" + JSON.stringify(editor.status) + ")")
     }
 
-    onTextChanged: updateText()
+    onTextChanged: {
+        if (handlingEditorText)
+            console.debug("[WebNoteEditor] suppress-echo length=" + editor.text.length)
+        else
+            updateText()
+    }
     onTitleChanged: updateTitle()
     onStatusChanged: updateStatus()
 
@@ -51,10 +59,14 @@ Item {
             }
         }
         onRecvAsyncMessage: function(message, data) {
-            if (message === "portlight:noteChanged" && data && typeof data.text === "string")
+            if (message === "portlight:noteChanged" && data
+                    && typeof data.text === "string") {
+                console.debug("[WebNoteEditor] noteChanged length=" + data.text.length)
+                editor.handlingEditorText = true
                 editor.textEdited(data.text)
-            else if (message === "portlight:titleChanged" && data
-                     && typeof data.title === "string") {
+                editor.handlingEditorText = false
+            } else if (message === "portlight:titleChanged" && data
+                       && typeof data.title === "string") {
                 var title = data.title.trim()
                 if (title.length > 0 && title.length <= 255
                         && title.indexOf("/") < 0 && title.indexOf("\\") < 0

@@ -10,6 +10,8 @@ ui_*
 /build*/
 /Harbour-portlight/build*/
 /Harbour-portlight/rpmbuild/
+node_modules/
+/Harbour-portlight/qml/editor/assets/codemirror.bundle.js
 *.rpm
 
 # Editor and operating system files
