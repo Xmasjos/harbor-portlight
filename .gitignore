@@ -17,3 +17,5 @@ ui_*
 Thumbs.db
 *.swp
 *.swo
+
+.temp/*
