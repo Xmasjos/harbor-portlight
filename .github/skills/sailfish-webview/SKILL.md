@@ -10,8 +10,8 @@ Use this skill when building, debugging, or packaging Sailfish OS QML WebView co
 ## Project architecture
 
 - The native Silica/QML UI owns navigation, vault access, validation, and saving. Web content must not receive unrestricted filesystem or backend access.
-- In this app, `Harbour-portlight/qml/pages/NotePage.qml` optionally loads the local, text-only editor in `Harbour-portlight/qml/editor.html`.
-- QML updates the editor with `runJavaScript`. Editor input reaches QML through `Harbour-portlight/qml/editor-frame.js`, `loadFrameScript`, `addMessageListener`, and `onRecvAsyncMessage`.
+- In this app, `Harbour-portlight/qml/pages/NotePage.qml` optionally loads the local, text-only editor in `Harbour-portlight/qml/editor/index.html`.
+- QML updates the editor with `runJavaScript`. Editor input reaches QML through `Harbour-portlight/qml/editor/frame.js`, `loadFrameScript`, `addMessageListener`, and `onRecvAsyncMessage`.
 
 ## Procedure
 

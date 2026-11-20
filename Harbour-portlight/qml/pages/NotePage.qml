@@ -9,6 +9,8 @@ Page {
     property string noteContent: ""
     property string savedContent: noteContent
     property string saveStatus: ""
+    property string editorStatus: noteContent === savedContent ? saveStatus
+                                  : (applicationWindow.autoSave ? "Saving…" : "Unsaved changes")
     property string baselineContent: noteContent
     property bool externalChangeDetected: false
     property bool conflictDialogOpen: false
@@ -21,10 +23,20 @@ Page {
         return slash < 0 ? "" : path.substring(0, slash)
     }
 
+    function noteFileName(path) {
+        var slash = path.lastIndexOf("/")
+        return slash < 0 ? path : path.substring(slash + 1)
+    }
+
     function renameNote(name) {
         var cleanName = name.trim()
-        if (!cleanName.length) {
-            titleField.text = notePage.notePath.substring(notePage.notePath.lastIndexOf("/") + 1).replace(/\.md$/i, "")
+        cleanName = cleanName.replace(/\.md$/i, "")
+        if (!cleanName.length || cleanName === "." || cleanName === ".."
+                || cleanName.indexOf("/") >= 0 || cleanName.indexOf("\\") >= 0
+                || cleanName.indexOf("\u0000") >= 0
+                || /[\u0000-\u001F]/.test(cleanName) || cleanName.length > 255) {
+            sourceEditor.resetTitle()
+            if (notePage.useHtmlEditor) webEditor.updateTitle()
             return
         }
         var slash = notePage.notePath.lastIndexOf("/")
@@ -36,11 +48,11 @@ Page {
         var result = vault.moveNote(notePage.notePath, destination)
         if (result.ok) {
             notePage.notePath = result.path
-            titleField.text = fileName.replace(/\.md$/i, "")
             notePage.saveStatus = "Renamed"
         } else {
             notePage.saveStatus = "Rename failed: " + result.error
-            titleField.text = notePage.notePath.substring(notePage.notePath.lastIndexOf("/") + 1).replace(/\.md$/i, "")
+            sourceEditor.resetTitle()
+            if (notePage.useHtmlEditor) webEditor.updateTitle()
         }
     }
 
@@ -177,44 +189,27 @@ Page {
             id: column
             width: notePage.width
             spacing: Theme.paddingMedium
-            PageHeader {
-                id: pageHeader
-                title: ""
-                TextField {
-                    id: titleField
-                    parent: pageHeader.extraContent
-                    y: Theme.paddingSmall
-                    width: parent.width
-                    text: notePage.notePath.substring(notePage.notePath.lastIndexOf("/") + 1).replace(/\.md$/i, "")
-                    label: "Note name"
-                    placeholderText: "Untitled"
-                    EnterKey.onClicked: notePage.renameNote(text)
-                    onActiveFocusChanged: if (!activeFocus) notePage.renameNote(text)
-                }
-            }
             SourceNoteEditor {
                 id: sourceEditor
                 visible: !notePage.useHtmlEditor
                 width: parent.width
-                height: Math.max(notePage.height - Theme.itemSizeLarge * 2, implicitContentHeight)
-                title: titleField.text
+                height: Math.max(notePage.height, implicitContentHeight)
+                title: notePage.noteFileName(notePage.notePath).replace(/\.md$/i, "")
                 text: notePage.noteContent
+                status: notePage.editorStatus
                 onTextEdited: function(value) { notePage.noteContent = value }
+                onTitleEdited: function(value) { notePage.renameNote(value) }
             }
             WebNoteEditor {
                 id: webEditor
                 visible: notePage.useHtmlEditor
                 width: parent.width
-                height: Math.max(notePage.height - Theme.itemSizeLarge * 2, Theme.itemSizeLarge)
-                title: titleField.text
+                height: notePage.height
+                title: notePage.noteFileName(notePage.notePath).replace(/\.md$/i, "")
                 text: notePage.noteContent
+                status: notePage.editorStatus
                 onTextEdited: function(value) { notePage.noteContent = value }
-            }
-            Label {
-                x: Theme.horizontalPageMargin
-                text: notePage.noteContent === notePage.savedContent ? notePage.saveStatus
-                                                        : (notePage.applicationWindow.autoSave ? "Saving…" : "Unsaved changes")
-                color: Theme.secondaryColor
+                onTitleEdited: function(value) { notePage.renameNote(value) }
             }
         }
         VerticalScrollDecorator {}
