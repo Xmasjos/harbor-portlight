@@ -38,10 +38,29 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 
 ## 4. Improve Markdown editing
 
-- Host the text-only Markdown editor in the bundled WebView, while keeping vault access, navigation, and the pulley menu native.
-- Preserve the original Markdown text exactly unless the user edits it; retain autosave, explicit save, and external-change protection.
-- Verify soft-keyboard, cursor/selection, pulley-menu, and page-stack back behavior on the target SailfishOS device.
-- After this works reliably, consider visual rendering/editing for inline images, links, checkboxes, and code blocks without losing frontmatter or unfamiliar syntax.
+### 4.1 Separate the source and WebView editors
+
+- Move the source editor and WebView editor into separate QML components with a shared title/text interface.
+- Keep note state, vault access, navigation, renaming, saving, and external-change handling native in `NotePage`.
+
+### 4.2 Include the note filename in the HTML editor
+
+- Show and edit the filename in the WebView editor; keep the native title field when using the source editor.
+- Send title changes to QML through validated WebView messages and let QML perform the file rename.
+
+### 4.3 Integrate a richer WebView editor
+
+- Replace the HTML editor's `<textarea>` with bundled CodeMirror 6 if it works reliably in the target SailfishOS Gecko WebView; prefer it over Monaco for this app.
+- Preserve the original Markdown exactly unless edited, and retain autosave, explicit save, and external-change protection.
+
+### 4.4 Verify the editing workflow on-device
+
+- Test editor initialization and text/title updates in both directions, filename renaming, soft keyboard, cursor and selection, copy/paste, pulley menu, and page-stack back behavior.
+- Confirm save and external-change protection still work, including notes with frontmatter and unfamiliar Markdown syntax.
+
+### 4.5 Consider visual Markdown editing
+
+- Only after text editing is reliable, consider rendering/editing inline images, links, checkboxes, and code blocks without losing source syntax.
 
 ## 5. Create and organize notes (implemented & verified on device)
 
