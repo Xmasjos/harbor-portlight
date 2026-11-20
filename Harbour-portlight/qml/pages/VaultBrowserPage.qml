@@ -11,6 +11,8 @@ Page {
     property string currentFolder: ""
     property string scanStatus: "Loading vault…"
     property string searchQuery: ""
+    property bool searchActive: searchQuery.trim().length >= 2
+    property bool searchLoading: false
     property bool refreshPending: true
     property string folderTitle: currentFolder.length
             ? currentFolder.slice(currentFolder.lastIndexOf("/") + 1)
@@ -184,10 +186,10 @@ Page {
         return entry.type === "note" ? "icon-m-file-document" : "icon-m-file-other"
     }
 
-    SilicaListView {
-        id: listView
+    SilicaFlickable {
         anchors.fill: parent
-        model: notesModel
+        contentHeight: height
+
         PullDownMenu {
             MenuItem {
                 text: "Settings"
@@ -199,7 +201,7 @@ Page {
                 text: applicationWindow.showUnsupportedFiles ? "Hide unsupported files" : "Show unsupported files"
                 onClicked: {
                     applicationWindow.showUnsupportedFiles = !applicationWindow.showUnsupportedFiles
-                    if (!vaultBrowserPage.searchQuery.trim().length) vaultBrowserPage.refreshFolder(true)
+                    if (!vaultBrowserPage.searchActive) vaultBrowserPage.refreshFolder(true)
                 }
             }
             MenuItem {
@@ -216,96 +218,134 @@ Page {
                 onClicked: vaultBrowserPage.createUntitledNote()
             }
         }
-        header: Column {
-            width: listView.width
-            PageHeader {
-                title: vaultBrowserPage.folderTitle
-                description: vaultBrowserPage.currentFolder.length ? vaultBrowserPage.currentFolder : "Vault root"
-            }
-            SearchField {
-                id: searchField
+
+        Column {
+            id: mainColumn
+            width: parent.width
+            height: parent.height
+
+            Column {
+                id: browserHeader
                 width: parent.width
-                placeholderText: "Search notes"
-                onTextChanged: {
-                    vaultBrowserPage.searchQuery = text
-                    searchTimer.restart()
+                height: implicitHeight
+                PageHeader {
+                    title: vaultBrowserPage.folderTitle
+                    description: vaultBrowserPage.currentFolder.length ? vaultBrowserPage.currentFolder : "Vault root"
+                }
+                SearchField {
+                    id: searchField
+                    width: parent.width
+                    placeholderText: "Search notes"
+                    onTextChanged: {
+                        vaultBrowserPage.searchQuery = text
+                        vaultBrowserPage.searchLoading = vaultBrowserPage.searchActive
+                        searchTimer.restart()
+                    }
+                    rightItem: Row {
+                        width: implicitWidth
+                        spacing: Theme.paddingSmall
+                        BusyIndicator {
+                            anchors.verticalCenter: clearSearchButton.verticalCenter
+                            size: BusyIndicatorSize.Small
+                            width: Theme.iconSizeSmall
+                            height: Theme.iconSizeSmall
+                            running: vaultBrowserPage.searchLoading
+                            visible: running
+                        }
+                        IconButton {
+                            id: clearSearchButton
+                            icon.source: "image://theme/icon-m-clear"
+                            enabled: searchField.text.length > 0
+                            opacity: enabled ? 1.0 : 0.0
+                            Behavior on opacity { FadeAnimation {} }
+                            onClicked: searchField.text = ""
+                        }
+                    }
+                }
+                Connections {
+                    target: vaultBrowserPage
+                    onClearSearchRequested: searchField.text = ""
+                }
+                Label {
+                    x: Theme.horizontalPageMargin
+                    width: parent.width - 2 * Theme.horizontalPageMargin
+                    text: vaultBrowserPage.scanStatus
+                    color: Theme.secondaryColor
+                    font.pixelSize: Theme.fontSizeExtraSmall
+                    truncationMode: TruncationMode.Fade
                 }
             }
-            Connections {
-                target: vaultBrowserPage
-                onClearSearchRequested: searchField.text = ""
-            }
-            Label {
-                x: Theme.horizontalPageMargin
-                width: parent.width - 2 * Theme.horizontalPageMargin
-                text: vaultBrowserPage.scanStatus
-                color: Theme.secondaryColor
-                font.pixelSize: Theme.fontSizeExtraSmall
-                truncationMode: TruncationMode.Fade
+
+            SilicaListView {
+                id: listView
+                width: parent.width
+                height: parent.height - browserHeader.height
+                clip: true
+                model: notesModel
+                delegate: VaultEntryDelegate {
+                    entry: ({ type: type, name: name, path: path, excerpt: excerpt, hasItems: hasItems })
+                    width: listView.width
+                    searchActive: vaultBrowserPage.searchActive
+                    iconName: vaultBrowserPage.iconForEntry(entry)
+                    renameCallback: function(entry) {
+                        var sourcePath = entry.path
+                        var isFolder = entry.type === "folder"
+                        vaultBrowserPage.askPath(isFolder ? "Rename folder" : "Rename note", sourcePath,
+                                     "Name and extension", function(path, dialog) {
+                            var result = isFolder ? vault.moveFolder(sourcePath, path)
+                                                  : vault.moveNote(sourcePath, path)
+                            if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
+                            else dialog.returnToSource(result.error)
+                        }, vaultBrowserPageComponent, "destination",
+                        { currentFolder: vaultBrowserPage.parentFolder(sourcePath) })
+                    }
+                    copyCallback: function(entry) {
+                        var sourcePath = entry.path
+                        var isFolder = entry.type === "folder"
+                        var defaultPath = isFolder ? sourcePath + " copy"
+                                                    : sourcePath.replace(/\.md$/i, " copy.md")
+                        vaultBrowserPage.askPath(isFolder ? "Copy folder to" : "Copy note to", defaultPath,
+                                     "Destination path", function(path, dialog) {
+                            var result = isFolder ? vault.copyFolder(sourcePath, path)
+                                                  : vault.copyNote(sourcePath, path)
+                            if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
+                            else dialog.returnToSource(result.error)
+                        }, vaultBrowserPageComponent, "destination",
+                        { currentFolder: vaultBrowserPage.parentFolder(defaultPath) })
+                    }
+                    moveCallback: function(entry) {
+                        pageStack.push(moveFolderPicker, {
+                            sourcePath: entry.path,
+                            isFolder: entry.type === "folder"
+                        })
+                    }
+                    deleteCallback: function(entry) {
+                        if (entry.type !== "folder") {
+                            vaultBrowserPage.deleteNote(entry.path)
+                        } else {
+                            var result = vault.deleteFolder(entry.path)
+                            if (result.ok) vaultBrowserPage.refreshFolder()
+                            else vaultBrowserPage.scanStatus = result.error
+                        }
+                    }
+                    activateCallback: function(entry) {
+                        if (entry.type === "folder") {
+                            pageStack.animatorPush(vaultBrowserPageComponent, {
+                                currentFolder: entry.path,
+                                applicationWindow: vaultBrowserPage.applicationWindow
+                            })
+                        } else if (entry.type === "image") {
+                            vaultBrowserPage.openImage(entry.path)
+                        } else if (entry.type === "note") {
+                            vaultBrowserPage.openNote(entry.path)
+                        } else {
+                            vaultBrowserPage.scanStatus = "Unsupported file type"
+                        }
+                    }
+                }
+                VerticalScrollDecorator {}
             }
         }
-        delegate: VaultEntryDelegate {
-            entry: ({ type: type, name: name, path: path, excerpt: excerpt, hasItems: hasItems })
-            width: listView.width
-            searchActive: vaultBrowserPage.searchQuery.trim().length > 0
-            iconName: vaultBrowserPage.iconForEntry(entry)
-            renameCallback: function(entry) {
-                var sourcePath = entry.path
-                var isFolder = entry.type === "folder"
-                vaultBrowserPage.askPath(isFolder ? "Rename folder" : "Rename note", sourcePath,
-                             "Name and extension", function(path, dialog) {
-                    var result = isFolder ? vault.moveFolder(sourcePath, path)
-                                          : vault.moveNote(sourcePath, path)
-                    if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
-                    else dialog.returnToSource(result.error)
-                }, vaultBrowserPageComponent, "destination",
-                { currentFolder: vaultBrowserPage.parentFolder(sourcePath) })
-            }
-            copyCallback: function(entry) {
-                var sourcePath = entry.path
-                var isFolder = entry.type === "folder"
-                var defaultPath = isFolder ? sourcePath + " copy"
-                                            : sourcePath.replace(/\.md$/i, " copy.md")
-                vaultBrowserPage.askPath(isFolder ? "Copy folder to" : "Copy note to", defaultPath,
-                             "Destination path", function(path, dialog) {
-                    var result = isFolder ? vault.copyFolder(sourcePath, path)
-                                          : vault.copyNote(sourcePath, path)
-                    if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
-                    else dialog.returnToSource(result.error)
-                }, vaultBrowserPageComponent, "destination",
-                { currentFolder: vaultBrowserPage.parentFolder(defaultPath) })
-            }
-            moveCallback: function(entry) {
-                pageStack.push(moveFolderPicker, {
-                    sourcePath: entry.path,
-                    isFolder: entry.type === "folder"
-                })
-            }
-            deleteCallback: function(entry) {
-                if (entry.type !== "folder") {
-                    vaultBrowserPage.deleteNote(entry.path)
-                } else {
-                    var result = vault.deleteFolder(entry.path)
-                    if (result.ok) vaultBrowserPage.refreshFolder()
-                    else vaultBrowserPage.scanStatus = result.error
-                }
-            }
-            activateCallback: function(entry) {
-                if (entry.type === "folder") {
-                    pageStack.animatorPush(vaultBrowserPageComponent, {
-                        currentFolder: entry.path,
-                        applicationWindow: vaultBrowserPage.applicationWindow
-                    })
-                } else if (entry.type === "image") {
-                    vaultBrowserPage.openImage(entry.path)
-                } else if (entry.type === "note") {
-                    vaultBrowserPage.openNote(entry.path)
-                } else {
-                    vaultBrowserPage.scanStatus = "Unsupported file type"
-                }
-            }
-        }
-        VerticalScrollDecorator {}
     }
 
     Timer {
@@ -320,15 +360,18 @@ Page {
         onTriggered: {
             if (vaultBrowserPage.status !== PageStatus.Active) {
                 vaultBrowserPage.refreshPending = true
+                vaultBrowserPage.searchLoading = false
                 return
             }
-            var query = vaultBrowserPage.searchQuery.trim()
-            if (!query.length) {
+            if (!vaultBrowserPage.searchActive) {
+                vaultBrowserPage.searchLoading = false
                 vaultBrowserPage.refreshFolder(true)
                 return
             }
 
+            var query = vaultBrowserPage.searchQuery.trim()
             var result = vault.searchNotes(query)
+            vaultBrowserPage.searchLoading = false
             if (!result.ok) {
                 vaultBrowserPage.refreshPending = false
                 vaultBrowserPage.updateNotes([], true)
@@ -341,10 +384,10 @@ Page {
             for (var i = 0; i < matches.length; i++)
                 matches[i].excerpt = matches[i].excerpt || ""
             vaultBrowserPage.updateNotes(matches, true)
-            scanStatus = result.matches.length
-                    ? result.matches.length + " matches across vault"
+            scanStatus = matches.length
+                    ? matches.length + " matches across vault"
                     : "No matching notes"
-            console.debug("[VaultBrowserPage] Note search completed; matches:", result.matches.length)
+            console.debug("[VaultBrowserPage] Note search completed; matches:", matches.length)
         }
     }
 
@@ -485,8 +528,11 @@ Page {
         }
         onFolderChanged: {
             if (!applicationWindow.configurationReady) return
-            if (vaultBrowserPage.searchQuery.trim().length) {
-                if (vaultBrowserPage.status === PageStatus.Active) searchTimer.restart()
+            if (vaultBrowserPage.searchActive) {
+                if (vaultBrowserPage.status === PageStatus.Active) {
+                    vaultBrowserPage.searchLoading = true
+                    searchTimer.restart()
+                }
                 else vaultBrowserPage.refreshPending = true
             } else {
                 vaultBrowserPage.refreshPending = true
@@ -504,8 +550,12 @@ Page {
         interval: 1
         onTriggered: {
             if (!vaultBrowserPage.visible || !vaultBrowserPage.refreshPending) return
-            if (vaultBrowserPage.searchQuery.trim().length) searchTimer.restart()
-            else vaultBrowserPage.refreshFolder(true)
+            if (vaultBrowserPage.searchActive) {
+                vaultBrowserPage.searchLoading = true
+                searchTimer.restart()
+            } else {
+                vaultBrowserPage.refreshFolder(true)
+            }
         }
     }
 
@@ -513,7 +563,7 @@ Page {
         target: vaultBrowserPage.applicationWindow
         onConfigurationReadyChanged: if (applicationWindow.configurationReady && vaultBrowserPage.visible) vaultBrowserPage.enterPage()
         onShowUnsupportedFilesChanged: {
-            if (vaultBrowserPage.visible && !vaultBrowserPage.searchQuery.trim().length) vaultBrowserPage.refreshFolder(true)
+            if (vaultBrowserPage.visible && !vaultBrowserPage.searchActive) vaultBrowserPage.refreshFolder(true)
         }
     }
 }
