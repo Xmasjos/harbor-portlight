@@ -38,7 +38,7 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 
 ## 4. Improve Markdown editing
 
-### 4.1 Separate the source and WebView editors
+### 4.1 Separate the source and WebView editors (implemented & verified on device)
 
 - Move the source editor and WebView editor into separate QML components with a shared title/text interface.
 - Keep note state, vault access, navigation, renaming, saving, and external-change handling native in `NotePage`.
@@ -149,6 +149,9 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 - Provide a button in the settings page to import all notes from the default sailfish notes app
 - The notes should be imported to the 'quick notes' folder
 - It might be that this is not possible for a sailjail enabled app. If so, see how filebrowser adds a 'run as root' option
+
+## 20. Investigate memory usage
+- Investigate why the app's memory usage is high and identify opportunities to reduce it.
 
 ## Inspiration
 

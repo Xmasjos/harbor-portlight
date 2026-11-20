@@ -1,7 +1,6 @@
 import QtQuick 2.0
 import Sailfish.Silica 1.0
-import Sailfish.WebView 1.0
-import Sailfish.WebEngine 1.0
+import "../components"
 
 Page {
     allowedOrientations: Orientation.All
@@ -90,7 +89,6 @@ Page {
             return
         }
         notePage.noteContent = result.content
-        notePage.updateEditorText()
         notePage.savedContent = result.content
         notePage.baselineContent = result.content
         notePage.externalChangeDetected = false
@@ -122,22 +120,9 @@ Page {
         pageStack.push(conflictDialog, { sourcePage: notePage })
     }
 
-    function updateEditorText() {
-        if (sourceEditor.text !== noteContent) sourceEditor.text = noteContent
-        if (editorLoaded) {
-            webEditor.runJavaScript("window.setNoteText(" + JSON.stringify(noteContent) + ")")
-        }
-    }
-
-    property bool editorLoaded: false
-
     onNoteContentChanged: {
-        if (sourceEditor.text !== noteContent) sourceEditor.text = noteContent
         if (applicationWindow.autoSave && noteContent !== savedContent) autoSaveTimer.restart()
         else autoSaveTimer.stop()
-    }
-    onUseHtmlEditorChanged: {
-        if (useHtmlEditor) updateEditorText()
     }
 
     onVisibleChanged: {
@@ -207,39 +192,23 @@ Page {
                     onActiveFocusChanged: if (!activeFocus) notePage.renameNote(text)
                 }
             }
-            TextArea {
+            SourceNoteEditor {
                 id: sourceEditor
                 visible: !notePage.useHtmlEditor
                 width: parent.width
+                height: Math.max(notePage.height - Theme.itemSizeLarge * 2, implicitContentHeight)
+                title: titleField.text
                 text: notePage.noteContent
-                placeholderText: "Markdown note"
-                label: "Note"
-                height: Math.max(notePage.height - Theme.itemSizeLarge * 2, implicitHeight)
-                onTextChanged: {
-                    if (notePage.noteContent !== text) notePage.noteContent = text
-                }
+                onTextEdited: function(value) { notePage.noteContent = value }
             }
-            WebView {
+            WebNoteEditor {
                 id: webEditor
                 visible: notePage.useHtmlEditor
                 width: parent.width
                 height: Math.max(notePage.height - Theme.itemSizeLarge * 2, Theme.itemSizeLarge)
-                url: Qt.resolvedUrl("../editor.html")
-
-                onViewInitialized: {
-                    webEditor.addMessageListener("portlight:noteChanged")
-                    webEditor.loadFrameScript(Qt.resolvedUrl("../editor-frame.js"))
-                }
-                onLoadingChanged: {
-                    if (!loading) {
-                        notePage.editorLoaded = true
-                        notePage.updateEditorText()
-                    }
-                }
-                onRecvAsyncMessage: function(message, data) {
-                    if (message === "portlight:noteChanged" && data && typeof data.text === "string")
-                        notePage.noteContent = data.text
-                }
+                title: titleField.text
+                text: notePage.noteContent
+                onTextEdited: function(value) { notePage.noteContent = value }
             }
             Label {
                 x: Theme.horizontalPageMargin
