@@ -71,7 +71,7 @@ Current device workflow: search the configured vault, open a Markdown note, edit
   - [x] Feature 2
   - [x] Feature 3
   - [x] Feature 4
-  - [ ] Feature 5
+  - [x] Feature 5
   - [ ] Feature 6
   - [ ] Feature 7
   - [ ] Feature 8

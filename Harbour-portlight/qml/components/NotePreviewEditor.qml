@@ -25,7 +25,24 @@ Item {
         var parsed = []
         var paragraphStart = -1
         var paragraphEnd = -1
+        var listStart = -1
+        var listEnd = -1
+        var listItems = []
         var lineStart = 0
+
+        function flushList() {
+            if (listStart < 0) return
+            parsed.push({
+                start: listStart,
+                end: listEnd,
+                source: value.substring(listStart, listEnd),
+                type: "list",
+                items: listItems
+            })
+            listStart = -1
+            listEnd = -1
+            listItems = []
+        }
 
         while (lineStart <= value.length) {
             var newline = value.indexOf("\n", lineStart)
@@ -34,8 +51,10 @@ Item {
             if (contentEnd > lineStart && value.charAt(contentEnd - 1) === "\r") contentEnd--
             var line = value.substring(lineStart, contentEnd)
             var heading = /^ {0,3}(#{1,6})(?:[ \t]+|$)(.*)$/.exec(line)
+            var list = /^([ \t]*)([-+*]|\d+[.)])[ \t]+(.*)$/.exec(line)
 
             if (!line.trim().length) {
+                flushList()
                 if (paragraphStart >= 0) {
                     parsed.push({
                         start: paragraphStart,
@@ -46,6 +65,7 @@ Item {
                     paragraphStart = -1
                 }
             } else if (heading) {
+                flushList()
                 if (paragraphStart >= 0) {
                     parsed.push({
                         start: paragraphStart,
@@ -62,7 +82,28 @@ Item {
                     type: "heading",
                     level: heading[1].length
                 })
+            } else if (list) {
+                if (paragraphStart >= 0) {
+                    parsed.push({
+                        start: paragraphStart,
+                        end: paragraphEnd,
+                        source: value.substring(paragraphStart, paragraphEnd),
+                        type: "paragraph"
+                    })
+                    paragraphStart = -1
+                }
+                var indentation = list[1].replace(/\t/g, "    ").length
+                if (listStart < 0) listStart = lineStart
+                listEnd = contentEnd
+                listItems.push({
+                    indent: Math.floor(indentation / 2),
+                    type: "list",
+                    marker: list[2],
+                    ordered: /^\d+[.)]$/.test(list[2]),
+                    text: list[3]
+                })
             } else {
+                flushList()
                 if (paragraphStart < 0) paragraphStart = lineStart
                 paragraphEnd = contentEnd
             }
@@ -71,6 +112,7 @@ Item {
             lineStart = newline + 1
         }
 
+        flushList()
         if (paragraphStart >= 0) {
             parsed.push({
                 start: paragraphStart,
@@ -98,6 +140,31 @@ Item {
         if (level === 4) return Theme.fontSizeMedium
         if (level === 5) return Theme.fontSizeSmall
         return Theme.fontSizeTiny
+    }
+
+    function renderList(block) {
+        var counters = {}
+        var output = ""
+
+        for (var i = 0; i < block.items.length; i++) {
+            var item = block.items[i]
+            var indentKey = "" + item.indent
+
+            if (item.ordered) {
+                counters[indentKey] = (counters[indentKey] || 0) + 1
+            } else {
+                counters[indentKey] = 0
+            }
+
+            if (i > 0) output += "<br>"
+            for (var spaces = 0; spaces < item.indent; spaces++)
+                output += "&nbsp;&nbsp;"
+            output += item.ordered
+                      ? counters[indentKey] + ".&nbsp;"
+                      : "-&nbsp;"
+            output += notePreviewEditor.renderInline(item.text)
+        }
+        return output
     }
 
     function escapeHtml(value) {
@@ -283,7 +350,9 @@ Item {
                           ? (blockItem.block.type === "heading"
                              ? notePreviewEditor.renderInline(
                                    notePreviewEditor.headingText(blockItem.block.source))
-                             : notePreviewEditor.renderInline(blockItem.block.source))
+                             : (blockItem.block.type === "list"
+                                ? notePreviewEditor.renderList(blockItem.block)
+                                : notePreviewEditor.renderInline(blockItem.block.source)))
                           : "Tap to add a paragraph"
                     textFormat: Text.RichText
                     color: Theme.primaryColor
