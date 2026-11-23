@@ -129,6 +129,19 @@ Item {
                 continue
             }
 
+            if (character === "~" && source.substr(i, 2) === "~~") {
+                var strikeClose = source.indexOf("~~", i + 2)
+                if (strikeClose >= i + 2) {
+                    var strikeText = source.substring(i + 2, strikeClose)
+                    if (strikeText.length) {
+                        flushPlain()
+                        output += "<s>" + notePreviewEditor.renderInline(strikeText) + "</s>"
+                        i = strikeClose + 2
+                        continue
+                    }
+                }
+            }
+
             if (character !== "*" && character !== "_") {
                 plain += character
                 i++
