@@ -32,14 +32,39 @@ Item {
             var lineEnd = newline < 0 ? value.length : newline
             var contentEnd = lineEnd
             if (contentEnd > lineStart && value.charAt(contentEnd - 1) === "\r") contentEnd--
+            var line = value.substring(lineStart, contentEnd)
+            var heading = /^ {0,3}(#{1,6})(?:[ \t]+|$)(.*)$/.exec(line)
 
-            if (value.substring(lineStart, contentEnd).trim().length) {
+            if (!line.trim().length) {
+                if (paragraphStart >= 0) {
+                    parsed.push({
+                        start: paragraphStart,
+                        end: paragraphEnd,
+                        source: value.substring(paragraphStart, paragraphEnd),
+                        type: "paragraph"
+                    })
+                    paragraphStart = -1
+                }
+            } else if (heading) {
+                if (paragraphStart >= 0) {
+                    parsed.push({
+                        start: paragraphStart,
+                        end: paragraphEnd,
+                        source: value.substring(paragraphStart, paragraphEnd),
+                        type: "paragraph"
+                    })
+                    paragraphStart = -1
+                }
+                parsed.push({
+                    start: lineStart,
+                    end: contentEnd,
+                    source: line,
+                    type: "heading",
+                    level: heading[1].length
+                })
+            } else {
                 if (paragraphStart < 0) paragraphStart = lineStart
                 paragraphEnd = contentEnd
-            } else if (paragraphStart >= 0) {
-                var paragraph = value.substring(paragraphStart, paragraphEnd)
-                parsed.push({ start: paragraphStart, end: paragraphEnd, source: paragraph })
-                paragraphStart = -1
             }
 
             if (newline < 0) break
@@ -50,12 +75,29 @@ Item {
             parsed.push({
                 start: paragraphStart,
                 end: paragraphEnd,
-                source: value.substring(paragraphStart, paragraphEnd)
+                source: value.substring(paragraphStart, paragraphEnd),
+                type: "paragraph"
             })
         }
 
-        if (!parsed.length) parsed.push({ start: 0, end: value.length, source: value })
+        if (!parsed.length)
+            parsed.push({ start: 0, end: value.length, source: value, type: "paragraph" })
         return parsed
+    }
+
+    function headingText(source) {
+        var match = /^ {0,3}(#{1,6})(?:[ \t]+|$)(.*)$/.exec(source)
+        if (!match) return source
+        return match[2].replace(/[ \t]+#+[ \t]*$/, "")
+    }
+
+    function headingPixelSize(level) {
+        if (level <= 1) return Theme.fontSizeHuge
+        if (level === 2) return Theme.fontSizeExtraLarge
+        if (level === 3) return Theme.fontSizeLarge
+        if (level === 4) return Theme.fontSizeMedium
+        if (level === 5) return Theme.fontSizeSmall
+        return Theme.fontSizeTiny
     }
 
     function activate(targetBlock) {
@@ -136,11 +178,17 @@ Item {
                     visible: !blockItem.editing
                     x: Theme.horizontalPageMargin
                     width: blockItem.width - Theme.horizontalPageMargin * 2
-                    text: blockItem.block.source.trim().length
-                          ? blockItem.block.source : "Tap to add a paragraph"
+                    text: blockItem.block.type === "heading"
+                          ? notePreviewEditor.headingText(blockItem.block.source)
+                          : (blockItem.block.source.trim().length
+                             ? blockItem.block.source : "Tap to add a paragraph")
                     textFormat: Text.PlainText
                     color: Theme.primaryColor
                     wrapMode: Text.Wrap
+                    font.pixelSize: blockItem.block.type === "heading"
+                                    ? notePreviewEditor.headingPixelSize(blockItem.block.level)
+                                    : Theme.fontSizeMedium
+                    font.bold: blockItem.block.type === "heading"
                 }
 
                 MouseArea {

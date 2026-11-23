@@ -68,7 +68,7 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 - In preview mode, render inactive blocks and show the Markdown source for the block being edited; allow checkbox and link interaction without preventing direct source edits.
 - [ ] Standard Markdown features ([inventory](docs/obsidian-markdown-features.md#standard-markdown)):
   - [x] Feature 1
-  - [ ] Feature 2
+  - [x] Feature 2
   - [ ] Feature 3
   - [ ] Feature 4
   - [ ] Feature 5

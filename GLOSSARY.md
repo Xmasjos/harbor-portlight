@@ -26,5 +26,9 @@ A timestamp-named Markdown note for jotting down text. Saved in the configured q
 **WebView**:
 The optional embedded Sailfish Gecko component that hosts the bundled CodeMirror editor; it is not an Obsidian runtime or Markdown preview. Vault access and app controls remain native.
 
+**Preview editor**:
+A native editing view that renders Markdown blocks and reveals a block's source while it is being edited.
+_Avoid_: Preview mode
+
 **External change**:
 A change to an open note made outside the app; treated as a save conflict to prevent silently overwriting the newer file.
