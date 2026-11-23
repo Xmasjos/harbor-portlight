@@ -153,6 +153,13 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 ## 20. Investigate memory usage
 - Investigate why the app's memory usage is high and identify opportunities to reduce it.
 
+## 21. Reduce processor usage
+- When the app is not in the foreground, stop active folder watches so no folder watches remain running in the background.
+
+## 22. Log on quit issue
+- Resolve the log on app exit: [W] unknown:174 - file:///usr/share/Harbour-portlight/qml/pages/NotePage.qml:174: TypeError: Cannot call method 'unwatchNote' of null
+
+
 ## Inspiration
 
 - Obsidian [Bookmarks](https://help.obsidian.md/plugins/bookmarks) covers quick access to frequently used files, folders, and searches.
