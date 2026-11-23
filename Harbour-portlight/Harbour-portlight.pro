@@ -26,6 +26,15 @@ DISTFILES += qml/Harbour-portlight.qml \
     qml/cover/CoverPage.qml \
     qml/components/VaultEntryDelegate.qml \
     qml/components/NotePreviewEditor.qml \
+    qml/components/preview/Parser.js \
+    qml/components/preview/TextBlock.js \
+    qml/components/preview/ListBlock.js \
+    qml/components/preview/QuoteBlock.js \
+    qml/components/preview/RuleBlock.js \
+    qml/components/preview/TextBlock.qml \
+    qml/components/preview/ListBlock.qml \
+    qml/components/preview/QuoteBlock.qml \
+    qml/components/preview/RuleBlock.qml \
     qml/components/SourceNoteEditor.qml \
     qml/components/WebNoteEditor.qml \
     qml/pages/VaultBrowserPage.qml \
