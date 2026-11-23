@@ -100,6 +100,94 @@ Item {
         return Theme.fontSizeTiny
     }
 
+    function escapeHtml(value) {
+        return value.replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#39;")
+                    .replace(/\n/g, "<br>")
+    }
+
+    function renderInline(source) {
+        var output = ""
+        var plain = ""
+        var i = 0
+
+        function flushPlain() {
+            if (!plain.length) return
+            output += escapeHtml(plain)
+            plain = ""
+        }
+
+        while (i < source.length) {
+            var character = source.charAt(i)
+
+            if (character === "\\" && i + 1 < source.length) {
+                plain += source.charAt(i + 1)
+                i += 2
+                continue
+            }
+
+            if (character !== "*" && character !== "_") {
+                plain += character
+                i++
+                continue
+            }
+
+            var markerLength = 1
+            if (source.substr(i, 3) === character + character + character)
+                markerLength = 3
+            else if (source.substr(i, 2) === character + character)
+                markerLength = 2
+
+            var markerText = markerLength === 3
+                           ? "***" : (markerLength === 2 ? "**" : "*")
+            if (character === "_")
+                markerText = markerLength === 3
+                           ? "___" : (markerLength === 2 ? "__" : "_")
+
+            var close = source.indexOf(markerText, i + markerLength)
+            if (close < 0) {
+                plain += character
+                i++
+                continue
+            }
+
+            var inner = source.substring(i + markerLength, close)
+            if (!inner.length) {
+                plain += character
+                i++
+                continue
+            }
+
+            if (markerLength === 1 && character === "_"
+                    && ((i > 0 && /\w/.test(source.charAt(i - 1)))
+                        || (close + 1 < source.length
+                            && /\w/.test(source.charAt(close + 1)))))
+                inner = null
+
+            if (inner === null) {
+                plain += character
+                i++
+                continue
+            }
+
+            flushPlain()
+            var rendered = notePreviewEditor.renderInline(inner)
+            if (markerLength === 3)
+                output += "<b><i>" + rendered + "</i></b>"
+            else if (markerLength === 2)
+                output += "<b>" + rendered + "</b>"
+            else
+                output += "<i>" + rendered + "</i>"
+            i = close + markerLength
+        }
+
+        flushPlain()
+        return output
+    }
+
     function activate(targetBlock) {
         var targetStart = targetBlock.start
         if (activeIndex >= 0) {
@@ -178,11 +266,13 @@ Item {
                     visible: !blockItem.editing
                     x: Theme.horizontalPageMargin
                     width: blockItem.width - Theme.horizontalPageMargin * 2
-                    text: blockItem.block.type === "heading"
-                          ? notePreviewEditor.headingText(blockItem.block.source)
-                          : (blockItem.block.source.trim().length
-                             ? blockItem.block.source : "Tap to add a paragraph")
-                    textFormat: Text.PlainText
+                    text: blockItem.block.source.trim().length
+                          ? (blockItem.block.type === "heading"
+                             ? notePreviewEditor.renderInline(
+                                   notePreviewEditor.headingText(blockItem.block.source))
+                             : notePreviewEditor.renderInline(blockItem.block.source))
+                          : "Tap to add a paragraph"
+                    textFormat: Text.RichText
                     color: Theme.primaryColor
                     wrapMode: Text.Wrap
                     font.pixelSize: blockItem.block.type === "heading"

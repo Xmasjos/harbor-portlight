@@ -69,7 +69,7 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 - [ ] Standard Markdown features ([inventory](docs/obsidian-markdown-features.md#standard-markdown)):
   - [x] Feature 1
   - [x] Feature 2
-  - [ ] Feature 3
+  - [x] Feature 3
   - [ ] Feature 4
   - [ ] Feature 5
   - [ ] Feature 6
