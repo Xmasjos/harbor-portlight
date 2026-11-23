@@ -17,6 +17,8 @@ Page {
     property var applicationWindow
     property bool quickCapture: false
     property bool useHtmlEditor: false
+    property string editorStartContent: ""
+    property string editorStartSavedContent: ""
 
     function noteFolder(path) {
         var slash = path.lastIndexOf("/")
@@ -28,11 +30,35 @@ Page {
         return slash < 0 ? path : path.substring(slash + 1)
     }
 
+    function logWebEditorProcess(event) {
+        console.debug("[NotePage] Web editor process " + event
+                      + ": running=" + editorProcess.running)
+    }
+
     function updateWebEditor() {
-        if (!webEditorLoader.item) return
-        webEditorLoader.item.title = noteFileName(notePath).replace(/\.md$/i, "")
-        webEditorLoader.item.text = noteContent
-        webEditorLoader.item.status = editorStatus
+        if (editorProcess.running) {
+            editorProcess.send("update", {
+                "title": noteFileName(notePath).replace(/\.md$/i, ""),
+                "content": noteContent,
+                "status": editorStatus
+            })
+        }
+    }
+
+    function toggleHtmlEditor() {
+        if (editorProcess.running) {
+            editorProcess.send("close", {})
+        } else {
+            editorStartContent = noteContent
+            editorStartSavedContent = savedContent
+            if (editorProcess.start(noteFileName(notePath).replace(/\.md$/i, ""),
+                                    noteContent, editorStatus)) {
+                useHtmlEditor = true
+                logWebEditorProcess("launch requested")
+            } else {
+                saveStatus = "Unable to start HTML editor"
+            }
+        }
     }
 
     function renameNote(name) {
@@ -43,7 +69,7 @@ Page {
                 || cleanName.indexOf("\u0000") >= 0
                 || /[\u0000-\u001F]/.test(cleanName) || cleanName.length > 255) {
             sourceEditor.resetTitle()
-            if (webEditorLoader.item) webEditorLoader.item.updateTitle()
+            updateWebEditor()
             return
         }
         var slash = notePage.notePath.lastIndexOf("/")
@@ -59,7 +85,7 @@ Page {
         } else {
             notePage.saveStatus = "Rename failed: " + result.error
             sourceEditor.resetTitle()
-            if (webEditorLoader.item) webEditorLoader.item.updateTitle()
+            updateWebEditor()
         }
     }
 
@@ -68,7 +94,7 @@ Page {
             notePage.saveStatus = "Not saved: the note changed elsewhere"
             console.warn("[NotePage] Note save blocked by an external change")
             notePage.showConflictDialog()
-            return
+            return false
         }
         var disk = vault.readNote(notePage.notePath)
         if (!disk.ok || disk.content !== notePage.baselineContent) {
@@ -76,7 +102,7 @@ Page {
             notePage.saveStatus = "Not saved: the note changed elsewhere"
             console.warn("[NotePage] Note save blocked because the note changed outside the editor")
             notePage.showConflictDialog()
-            return
+            return false
         }
         var result = vault.writeNote(notePage.notePath, notePage.noteContent, notePage.baselineContent)
         if (result.ok) {
@@ -84,6 +110,7 @@ Page {
             notePage.baselineContent = notePage.noteContent
             notePage.saveStatus = automatic ? "Saved automatically" : "Saved"
             console.debug("[NotePage] Note saved")
+            return true
         } else if (result.conflict) {
             notePage.externalChangeDetected = true
             notePage.saveStatus = "Not saved: the note changed elsewhere"
@@ -93,6 +120,7 @@ Page {
             notePage.saveStatus = "Save failed: " + result.error
             console.warn("[NotePage] Note save failed:", result.error)
         }
+        return false
     }
 
     function refreshBaseline() {
@@ -169,6 +197,7 @@ Page {
         if (visible) vault.watchNote(notePath)
     }
     Component.onDestruction: {
+        if (editorProcess.running) editorProcess.send("close", {})
         vault.unwatchNote()
         if (quickCapture) {
             var stored = vault.readNote(notePath)
@@ -183,7 +212,7 @@ Page {
         PullDownMenu {
             MenuItem {
                 text: notePage.useHtmlEditor ? "Use source editor" : "Use HTML editor"
-                onClicked: notePage.useHtmlEditor = !notePage.useHtmlEditor
+                onClicked: notePage.toggleHtmlEditor()
             }
             MenuItem {
                 text: "Save"
@@ -211,14 +240,6 @@ Page {
                 onTextEdited: function(value) { notePage.noteContent = value }
                 onTitleEdited: function(value) { notePage.renameNote(value) }
             }
-            Loader {
-                id: webEditorLoader
-                active: notePage.useHtmlEditor
-                source: active ? "../components/WebNoteEditor.qml" : ""
-                width: parent.width
-                height: notePage.height
-                onLoaded: notePage.updateWebEditor()
-            }
         }
         VerticalScrollDecorator {}
     }
@@ -244,9 +265,36 @@ Page {
     }
 
     Connections {
-        target: webEditorLoader.item
-        onTextEdited: function(value) { notePage.noteContent = value }
-        onTitleEdited: function(value) { notePage.renameNote(value) }
+        target: editorProcess
+        onMessageReceived: function(type, data) {
+            if (type === "edit" && typeof data.text === "string") {
+                notePage.noteContent = data.text
+            } else if (type === "rename" && typeof data.title === "string") {
+                notePage.renameNote(data.title)
+            } else if (type === "save" && typeof data.text === "string") {
+                notePage.noteContent = data.text
+                var saved = notePage.saveNote(false)
+                editorProcess.send("saveResult", {
+                    "ok": saved,
+                    "status": notePage.editorStatus
+                })
+                if (!saved) notePage.applicationWindow.activate()
+            } else if (type === "cancel") {
+                notePage.noteContent = notePage.savedContent === notePage.editorStartSavedContent
+                        ? notePage.editorStartContent : notePage.savedContent
+            }
+        }
+        onRunningChanged: {
+            notePage.useHtmlEditor = editorProcess.running
+            notePage.logWebEditorProcess(editorProcess.running ? "started" : "stopped")
+            if (!editorProcess.running && notePage.applicationWindow)
+                notePage.applicationWindow.activate()
+        }
+        onProcessError: function(error) {
+            notePage.saveStatus = "HTML editor failed: " + error
+            notePage.useHtmlEditor = false
+            notePage.logWebEditorProcess("error: " + error)
+        }
     }
 
     Connections {

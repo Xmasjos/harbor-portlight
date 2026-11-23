@@ -14,6 +14,9 @@ Item {
     signal textEdited(string text)
     signal titleEdited(string title)
 
+    Component.onCompleted: console.debug("[WebNoteEditor] component created")
+    Component.onDestruction: console.debug("[WebNoteEditor] component destroyed")
+
     function updateText() {
         if (editor.editorLoaded) {
             console.debug("[WebNoteEditor] sync-to-page length=" + editor.text.length)
@@ -46,11 +49,13 @@ Item {
         url: Qt.resolvedUrl("../editor/index.html")
 
         onViewInitialized: {
+            console.debug("[WebNoteEditor] WebView initialized")
             webView.addMessageListener("portlight:noteChanged")
             webView.addMessageListener("portlight:titleChanged")
             webView.loadFrameScript(Qt.resolvedUrl("../editor/frame.js"))
         }
         onLoadingChanged: {
+            console.debug("[WebNoteEditor] WebView loading changed: loading=" + loading)
             if (!loading) {
                 editor.editorLoaded = true
                 editor.updateText()
@@ -58,6 +63,7 @@ Item {
                 editor.updateStatus()
             }
         }
+        Component.onDestruction: console.debug("[WebNoteEditor] WebView component destroyed")
         onRecvAsyncMessage: function(message, data) {
             if (message === "portlight:noteChanged" && data
                     && typeof data.text === "string") {

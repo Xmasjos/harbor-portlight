@@ -6,6 +6,7 @@
 
 #include <sailfishapp.h>
 
+#include "editorprocess.h"
 #include "vaultbackend.h"
 
 Q_LOGGING_CATEGORY(lcApplication, "portlight.app")
@@ -22,10 +23,26 @@ int main(int argc, char *argv[])
 #endif
     }
 
+    if (app->arguments().contains(QStringLiteral("--editor-helper"))) {
+        EditorChannel channel;
+        QScopedPointer<QQuickView> helperView(SailfishApp::createView());
+        helperView->rootContext()->setContextProperty(QStringLiteral("editorChannel"), &channel);
+        helperView->setSource(SailfishApp::pathTo(QStringLiteral("qml/EditorHelper.qml")));
+        if (helperView->status() == QQuickView::Error) {
+            qCCritical(lcApplication) << "Unable to load editor helper";
+            return 1;
+        }
+        helperView->show();
+        qCDebug(lcApplication) << "Editor helper window started";
+        return app->exec();
+    }
+
     QScopedPointer<QQuickView> view(SailfishApp::createView());
     VaultBackend vault;
+    EditorProcess editorProcess;
 
     view->rootContext()->setContextProperty(QStringLiteral("vault"), &vault);
+    view->rootContext()->setContextProperty(QStringLiteral("editorProcess"), &editorProcess);
     view->setSource(SailfishApp::pathTo(QStringLiteral("qml/Harbour-portlight.qml")));
     view->show();
     qCDebug(lcApplication) << "Application started";

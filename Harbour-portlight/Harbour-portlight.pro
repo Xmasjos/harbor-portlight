@@ -18,11 +18,14 @@ CODEMIRROR_BUNDLE = qml/editor/assets/codemirror.bundle.js
 !exists($$CODEMIRROR_BUNDLE): error("Missing $$CODEMIRROR_BUNDLE. Run npm ci && npm run build from ../portlight-codemirror-editor.")
 
 SOURCES += src/main.cpp \
+    src/editorprocess.cpp \
     src/vaultbackend.cpp
 
-HEADERS += src/vaultbackend.h
+HEADERS += src/editorprocess.h \
+    src/vaultbackend.h
 
 DISTFILES += qml/Harbour-portlight.qml \
+    qml/EditorHelper.qml \
     qml/cover/CoverPage.qml \
     qml/components/VaultEntryDelegate.qml \
     qml/components/SourceNoteEditor.qml \
