@@ -16,7 +16,7 @@ Page {
     property bool conflictDialogOpen: false
     property var applicationWindow
     property bool quickCapture: false
-    property string editorMode: "source"
+    property string editorMode: "preview"
 
     function noteFolder(path) {
         var slash = path.lastIndexOf("/")
