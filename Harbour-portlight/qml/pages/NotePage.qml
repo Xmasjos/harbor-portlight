@@ -28,6 +28,13 @@ Page {
         return slash < 0 ? path : path.substring(slash + 1)
     }
 
+    function updateWebEditor() {
+        if (!webEditorLoader.item) return
+        webEditorLoader.item.title = noteFileName(notePath).replace(/\.md$/i, "")
+        webEditorLoader.item.text = noteContent
+        webEditorLoader.item.status = editorStatus
+    }
+
     function renameNote(name) {
         var cleanName = name.trim()
         cleanName = cleanName.replace(/\.md$/i, "")
@@ -36,7 +43,7 @@ Page {
                 || cleanName.indexOf("\u0000") >= 0
                 || /[\u0000-\u001F]/.test(cleanName) || cleanName.length > 255) {
             sourceEditor.resetTitle()
-            if (notePage.useHtmlEditor) webEditor.updateTitle()
+            if (webEditorLoader.item) webEditorLoader.item.updateTitle()
             return
         }
         var slash = notePage.notePath.lastIndexOf("/")
@@ -52,7 +59,7 @@ Page {
         } else {
             notePage.saveStatus = "Rename failed: " + result.error
             sourceEditor.resetTitle()
-            if (notePage.useHtmlEditor) webEditor.updateTitle()
+            if (webEditorLoader.item) webEditorLoader.item.updateTitle()
         }
     }
 
@@ -135,7 +142,9 @@ Page {
     onNoteContentChanged: {
         if (applicationWindow.autoSave && noteContent !== savedContent) autoSaveTimer.restart()
         else autoSaveTimer.stop()
+        updateWebEditor()
     }
+    onEditorStatusChanged: updateWebEditor()
 
     onVisibleChanged: {
         if (visible && applicationWindow) {
@@ -144,6 +153,7 @@ Page {
         }
         if (visible) vault.watchNote(notePath)
         else vault.unwatchNote()
+        updateWebEditor()
     }
     onNotePathChanged: {
         if (visible && applicationWindow) {
@@ -151,6 +161,7 @@ Page {
             applicationWindow.currentFolder = noteFolder(notePath)
         }
         if (visible) vault.watchNote(notePath)
+        updateWebEditor()
     }
     Component.onCompleted: {
         notePage.savedContent = notePage.noteContent
@@ -200,16 +211,13 @@ Page {
                 onTextEdited: function(value) { notePage.noteContent = value }
                 onTitleEdited: function(value) { notePage.renameNote(value) }
             }
-            WebNoteEditor {
-                id: webEditor
-                visible: notePage.useHtmlEditor
+            Loader {
+                id: webEditorLoader
+                active: notePage.useHtmlEditor
+                source: active ? "../components/WebNoteEditor.qml" : ""
                 width: parent.width
                 height: notePage.height
-                title: notePage.noteFileName(notePage.notePath).replace(/\.md$/i, "")
-                text: notePage.noteContent
-                status: notePage.editorStatus
-                onTextEdited: function(value) { notePage.noteContent = value }
-                onTitleEdited: function(value) { notePage.renameNote(value) }
+                onLoaded: notePage.updateWebEditor()
             }
         }
         VerticalScrollDecorator {}
@@ -233,6 +241,12 @@ Page {
         onSaveDelayChanged: {
             if (autoSaveTimer.running) autoSaveTimer.restart()
         }
+    }
+
+    Connections {
+        target: webEditorLoader.item
+        onTextEdited: function(value) { notePage.noteContent = value }
+        onTitleEdited: function(value) { notePage.renameNote(value) }
     }
 
     Connections {
