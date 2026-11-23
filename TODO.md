@@ -62,6 +62,44 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 
 - Only after text editing is reliable, consider rendering/editing inline images, links, checkboxes, and code blocks without losing source syntax.
 
+### 4.6 Add a native NotePreviewEditor
+
+- Keep the pure source editor available as a separate editing mode.
+- In preview mode, render inactive blocks and show the Markdown source for the block being edited; allow checkbox and link interaction without preventing direct source edits.
+- [ ] Standard Markdown features ([inventory](docs/obsidian-markdown-features.md#standard-markdown)):
+  - [x] Feature 1
+  - [ ] Feature 2
+  - [ ] Feature 3
+  - [ ] Feature 4
+  - [ ] Feature 5
+  - [ ] Feature 6
+  - [ ] Feature 7
+  - [ ] Feature 8
+  - [ ] Feature 9
+  - [ ] Feature 10
+  - [ ] Feature 11
+  - [ ] Feature 12
+- [ ] Obsidian formatting extensions ([inventory](docs/obsidian-markdown-features.md#obsidian-formatting-extensions)):
+  - [ ] Feature 1
+  - [ ] Feature 2
+  - [ ] Feature 3
+  - [ ] Feature 4
+  - [ ] Feature 5
+  - [ ] Feature 6
+- [ ] Links and embeds ([inventory](docs/obsidian-markdown-features.md#links-and-embeds)):
+  - [ ] Feature 1
+  - [ ] Feature 2
+  - [ ] Feature 3
+  - [ ] Feature 4
+  - [ ] Feature 5
+  - [ ] Feature 6
+  - [ ] Feature 7
+  - [ ] Feature 8
+- [ ] Tags and properties ([inventory](docs/obsidian-markdown-features.md#tags-and-properties)):
+  - [ ] Feature 1
+  - [ ] Feature 2
+  - [ ] Feature 3
+
 ## 5. Create and organize notes (implemented & verified on device)
 
 - Allow renaming notes with the native QML interface.
@@ -152,6 +190,9 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 
 ## 20. Investigate memory usage
 - Investigate why the app's memory usage is high and identify opportunities to reduce it.
+
+## 21. Reduce processor usage
+- When the app is not in the foreground, stop active folder watches so no folder watches remain running in the background.
 
 ## Inspiration
 

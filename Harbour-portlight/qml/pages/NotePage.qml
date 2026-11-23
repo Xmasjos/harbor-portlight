@@ -16,7 +16,7 @@ Page {
     property bool conflictDialogOpen: false
     property var applicationWindow
     property bool quickCapture: false
-    property bool useHtmlEditor: false
+    property string editorMode: "source"
 
     function noteFolder(path) {
         var slash = path.lastIndexOf("/")
@@ -42,7 +42,8 @@ Page {
                 || cleanName.indexOf("/") >= 0 || cleanName.indexOf("\\") >= 0
                 || cleanName.indexOf("\u0000") >= 0
                 || /[\u0000-\u001F]/.test(cleanName) || cleanName.length > 255) {
-            sourceEditor.resetTitle()
+            if (sourceEditorLoader.item) sourceEditorLoader.item.resetTitle()
+            if (previewEditorLoader.item) previewEditorLoader.item.resetTitle()
             if (webEditorLoader.item) webEditorLoader.item.updateTitle()
             return
         }
@@ -58,7 +59,8 @@ Page {
             notePage.saveStatus = "Renamed"
         } else {
             notePage.saveStatus = "Rename failed: " + result.error
-            sourceEditor.resetTitle()
+            if (sourceEditorLoader.item) sourceEditorLoader.item.resetTitle()
+            if (previewEditorLoader.item) previewEditorLoader.item.resetTitle()
             if (webEditorLoader.item) webEditorLoader.item.updateTitle()
         }
     }
@@ -182,8 +184,19 @@ Page {
 
         PullDownMenu {
             MenuItem {
-                text: notePage.useHtmlEditor ? "Use source editor" : "Use HTML editor"
-                onClicked: notePage.useHtmlEditor = !notePage.useHtmlEditor
+                text: "Use source editor"
+                visible: notePage.editorMode !== "source"
+                onClicked: notePage.editorMode = "source"
+            }
+            MenuItem {
+                text: "Use HTML editor"
+                visible: notePage.editorMode !== "html"
+                onClicked: notePage.editorMode = "html"
+            }
+            MenuItem {
+                text: "Use preview editor"
+                visible: notePage.editorMode !== "preview"
+                onClicked: notePage.editorMode = "preview"
             }
             MenuItem {
                 text: "Save"
@@ -200,23 +213,51 @@ Page {
             id: column
             width: notePage.width
             spacing: Theme.paddingMedium
-            SourceNoteEditor {
-                id: sourceEditor
-                visible: !notePage.useHtmlEditor
+            Loader {
+                id: sourceEditorLoader
+                active: notePage.editorMode === "source"
+                visible: active
                 width: parent.width
-                height: Math.max(notePage.height, implicitContentHeight)
-                title: notePage.noteFileName(notePage.notePath).replace(/\.md$/i, "")
-                text: notePage.noteContent
-                status: notePage.editorStatus
-                onTextEdited: function(value) { notePage.noteContent = value }
-                onTitleEdited: function(value) { notePage.renameNote(value) }
+                height: active
+                        ? Math.max(notePage.height, item ? item.implicitContentHeight : notePage.height)
+                        : 0
+                sourceComponent: Component {
+                    SourceNoteEditor {
+                        width: notePage.width
+                        title: notePage.noteFileName(notePage.notePath).replace(/\.md$/i, "")
+                        text: notePage.noteContent
+                        status: notePage.editorStatus
+                        onTextEdited: function(value) { notePage.noteContent = value }
+                        onTitleEdited: function(value) { notePage.renameNote(value) }
+                    }
+                }
+            }
+            Loader {
+                id: previewEditorLoader
+                active: notePage.editorMode === "preview"
+                visible: active
+                width: parent.width
+                height: active
+                        ? Math.max(notePage.height, item ? item.implicitContentHeight : notePage.height)
+                        : 0
+                sourceComponent: Component {
+                    NotePreviewEditor {
+                        width: notePage.width
+                        title: notePage.noteFileName(notePage.notePath).replace(/\.md$/i, "")
+                        text: notePage.noteContent
+                        status: notePage.editorStatus
+                        onTextEdited: function(value) { notePage.noteContent = value }
+                        onTitleEdited: function(value) { notePage.renameNote(value) }
+                    }
+                }
             }
             Loader {
                 id: webEditorLoader
-                active: notePage.useHtmlEditor
+                active: notePage.editorMode === "html"
+                visible: active
                 source: active ? "../components/WebNoteEditor.qml" : ""
                 width: parent.width
-                height: notePage.height
+                height: active ? notePage.height : 0
                 onLoaded: {
                     item.textEdited.connect(function(value) { notePage.noteContent = value })
                     item.titleEdited.connect(function(value) { notePage.renameNote(value) })

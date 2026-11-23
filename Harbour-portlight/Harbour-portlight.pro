@@ -25,6 +25,7 @@ HEADERS += src/vaultbackend.h
 DISTFILES += qml/Harbour-portlight.qml \
     qml/cover/CoverPage.qml \
     qml/components/VaultEntryDelegate.qml \
+    qml/components/NotePreviewEditor.qml \
     qml/components/SourceNoteEditor.qml \
     qml/components/WebNoteEditor.qml \
     qml/pages/VaultBrowserPage.qml \
