@@ -93,14 +93,18 @@ Item {
                     paragraphStart = -1
                 }
                 var indentation = list[1].replace(/\t/g, "    ").length
+                var task = /^\[([ xX])\][ \t]*(.*)$/.exec(list[3])
                 if (listStart < 0) listStart = lineStart
                 listEnd = contentEnd
                 listItems.push({
+                    start: lineStart,
+                    end: contentEnd,
                     indent: Math.floor(indentation / 2),
                     type: "list",
                     marker: list[2],
                     ordered: /^\d+[.)]$/.test(list[2]),
-                    text: list[3]
+                    taskState: task ? task[1].toLowerCase() : null,
+                    text: task ? task[2] : list[3]
                 })
             } else {
                 flushList()
@@ -142,29 +146,36 @@ Item {
         return Theme.fontSizeTiny
     }
 
-    function renderList(block) {
-        var counters = {}
-        var output = ""
-
-        for (var i = 0; i < block.items.length; i++) {
-            var item = block.items[i]
-            var indentKey = "" + item.indent
-
-            if (item.ordered) {
-                counters[indentKey] = (counters[indentKey] || 0) + 1
-            } else {
-                counters[indentKey] = 0
-            }
-
-            if (i > 0) output += "<br>"
-            for (var spaces = 0; spaces < item.indent; spaces++)
-                output += "&nbsp;&nbsp;"
-            output += item.ordered
-                      ? counters[indentKey] + ".&nbsp;"
-                      : "-&nbsp;"
-            output += notePreviewEditor.renderInline(item.text)
+    function listMarker(block, itemIndex) {
+        var item = block.items[itemIndex]
+        if (!item.ordered) return "-"
+        var counter = 0
+        for (var i = 0; i <= itemIndex; i++) {
+            var previous = block.items[i]
+            if (previous.indent !== item.indent) continue
+            counter = previous.ordered ? counter + 1 : 0
         }
-        return output
+        return counter + "."
+    }
+
+    function toggleTask(blockIndex, itemIndex) {
+        if (blockIndex < 0 || blockIndex >= blocks.length) return
+        var block = blocks[blockIndex]
+        if (itemIndex < 0 || itemIndex >= block.items.length) return
+
+        var item = block.items[itemIndex]
+        var line = sourceText.substring(item.start, item.end)
+        var taskLine = line.replace(/^([ \t]*(?:[-+*]|\d+[.)])[ \t]+\[)([ xX])(\][ \t]*)/,
+                                     function(match, prefix, state, suffix) {
+                                         return prefix + (state.toLowerCase() === "x" ? " " : "x") + suffix
+                                     })
+        if (taskLine === line) return
+
+        sourceText = sourceText.substring(0, item.start)
+                   + taskLine
+                   + sourceText.substring(item.end)
+        blocks = parseBlocks(sourceText)
+        textEdited(sourceText)
     }
 
     function escapeHtml(value) {
@@ -337,22 +348,23 @@ Item {
             delegate: Item {
                 id: blockItem
                 property var block: modelData
+                property int blockIndex: index
                 property bool editing: notePreviewEditor.activeIndex === index
                 width: contentColumn.width
-                height: editing ? editArea.height : displayLabel.implicitHeight
+                height: editing ? editArea.height
+                                : (block.type === "list"
+                                   ? listColumn.implicitHeight : displayLabel.implicitHeight)
 
                 Label {
                     id: displayLabel
-                    visible: !blockItem.editing
+                    visible: !blockItem.editing && blockItem.block.type !== "list"
                     x: Theme.horizontalPageMargin
                     width: blockItem.width - Theme.horizontalPageMargin * 2
                     text: blockItem.block.source.trim().length
                           ? (blockItem.block.type === "heading"
                              ? notePreviewEditor.renderInline(
                                    notePreviewEditor.headingText(blockItem.block.source))
-                             : (blockItem.block.type === "list"
-                                ? notePreviewEditor.renderList(blockItem.block)
-                                : notePreviewEditor.renderInline(blockItem.block.source)))
+                             : notePreviewEditor.renderInline(blockItem.block.source))
                           : "Tap to add a paragraph"
                     textFormat: Text.RichText
                     color: Theme.primaryColor
@@ -365,7 +377,89 @@ Item {
 
                 MouseArea {
                     anchors.fill: displayLabel
+                    visible: displayLabel.visible
                     onClicked: notePreviewEditor.activate(blockItem.block)
+                }
+
+                Column {
+                    id: listColumn
+                    visible: !blockItem.editing && blockItem.block.type === "list"
+                    x: Theme.horizontalPageMargin
+                    width: blockItem.width - Theme.horizontalPageMargin * 2
+
+                    Repeater {
+                        model: blockItem.block.type === "list" ? blockItem.block.items : []
+
+                        delegate: Item {
+                            id: listRow
+                            property var listItem: modelData
+                            property int itemIndex: index
+                            property real markerSize: Theme.fontSizeLarge
+                            width: listColumn.width
+                            height: Math.max(markerSize, rowText.implicitHeight)
+
+                            Item {
+                                x: listRow.listItem.indent * Theme.paddingLarge
+                                width: listRow.markerSize
+                                height: listRow.height
+
+                                Label {
+                                    anchors.fill: parent
+                                    visible: listRow.listItem.taskState === null
+                                    text: notePreviewEditor.listMarker(blockItem.block, index)
+                                    color: Theme.primaryColor
+                                    font.pixelSize: Theme.fontSizeMedium
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    visible: listRow.listItem.taskState !== null
+                                    width: listRow.markerSize - 4
+                                    height: width
+                                    color: "transparent"
+                                    border.color: Theme.primaryColor
+                                    border.width: 2
+                                    radius: 3
+
+                                    Label {
+                                        anchors.centerIn: parent
+                                        visible: listRow.listItem.taskState === "x"
+                                        text: "✓"
+                                        color: Theme.primaryColor
+                                        font.pixelSize: Theme.fontSizeMedium
+                                        font.bold: true
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: notePreviewEditor.toggleTask(
+                                                       blockItem.blockIndex,
+                                                       listRow.itemIndex)
+                                    }
+                                }
+                            }
+
+                            Label {
+                                id: rowText
+                                x: listRow.listItem.indent * Theme.paddingLarge
+                                   + listRow.markerSize + Theme.paddingSmall
+                                width: listRow.width - x
+                                text: listRow.listItem.taskState === "x"
+                                      ? "<s>" + notePreviewEditor.renderInline(
+                                            listRow.listItem.text) + "</s>"
+                                      : notePreviewEditor.renderInline(listRow.listItem.text)
+                                textFormat: Text.RichText
+                                color: Theme.primaryColor
+                                wrapMode: Text.Wrap
+                            }
+
+                            MouseArea {
+                                anchors.fill: rowText
+                                onClicked: notePreviewEditor.activate(blockItem.block)
+                            }
+                        }
+                    }
                 }
 
                 TextArea {
