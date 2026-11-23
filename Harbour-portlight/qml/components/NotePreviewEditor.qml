@@ -28,6 +28,9 @@ Item {
         var listStart = -1
         var listEnd = -1
         var listItems = []
+        var quoteStart = -1
+        var quoteEnd = -1
+        var quoteItems = []
         var lineStart = 0
 
         function flushList() {
@@ -44,6 +47,20 @@ Item {
             listItems = []
         }
 
+        function flushQuote() {
+            if (quoteStart < 0) return
+            parsed.push({
+                start: quoteStart,
+                end: quoteEnd,
+                source: value.substring(quoteStart, quoteEnd),
+                type: "blockquote",
+                items: quoteItems
+            })
+            quoteStart = -1
+            quoteEnd = -1
+            quoteItems = []
+        }
+
         while (lineStart <= value.length) {
             var newline = value.indexOf("\n", lineStart)
             var lineEnd = newline < 0 ? value.length : newline
@@ -52,9 +69,11 @@ Item {
             var line = value.substring(lineStart, contentEnd)
             var heading = /^ {0,3}(#{1,6})(?:[ \t]+|$)(.*)$/.exec(line)
             var list = /^([ \t]*)([-+*]|\d+[.)])[ \t]+(.*)$/.exec(line)
+            var quote = /^ {0,3}((?:>[ \t]?)+)(.*)$/.exec(line)
 
             if (!line.trim().length) {
                 flushList()
+                flushQuote()
                 if (paragraphStart >= 0) {
                     parsed.push({
                         start: paragraphStart,
@@ -66,6 +85,7 @@ Item {
                 }
             } else if (heading) {
                 flushList()
+                flushQuote()
                 if (paragraphStart >= 0) {
                     parsed.push({
                         start: paragraphStart,
@@ -82,7 +102,23 @@ Item {
                     type: "heading",
                     level: heading[1].length
                 })
+            } else if (quote) {
+                flushList()
+                if (paragraphStart >= 0) {
+                    parsed.push({
+                        start: paragraphStart,
+                        end: paragraphEnd,
+                        source: value.substring(paragraphStart, paragraphEnd),
+                        type: "paragraph"
+                    })
+                    paragraphStart = -1
+                }
+                var depth = (quote[1].match(/>/g) || []).length
+                if (quoteStart < 0) quoteStart = lineStart
+                quoteEnd = contentEnd
+                quoteItems.push({ text: quote[2], depth: depth })
             } else if (list) {
+                flushQuote()
                 if (paragraphStart >= 0) {
                     parsed.push({
                         start: paragraphStart,
@@ -108,6 +144,7 @@ Item {
                 })
             } else {
                 flushList()
+                flushQuote()
                 if (paragraphStart < 0) paragraphStart = lineStart
                 paragraphEnd = contentEnd
             }
@@ -117,6 +154,7 @@ Item {
         }
 
         flushList()
+        flushQuote()
         if (paragraphStart >= 0) {
             parsed.push({
                 start: paragraphStart,
@@ -353,11 +391,16 @@ Item {
                 width: contentColumn.width
                 height: editing ? editArea.height
                                 : (block.type === "list"
-                                   ? listColumn.implicitHeight : displayLabel.implicitHeight)
+                                   ? listColumn.implicitHeight
+                                   : (block.type === "blockquote"
+                                      ? quoteColumn.implicitHeight
+                                      : displayLabel.implicitHeight))
 
                 Label {
                     id: displayLabel
-                    visible: !blockItem.editing && blockItem.block.type !== "list"
+                    visible: !blockItem.editing
+                             && blockItem.block.type !== "list"
+                             && blockItem.block.type !== "blockquote"
                     x: Theme.horizontalPageMargin
                     width: blockItem.width - Theme.horizontalPageMargin * 2
                     text: blockItem.block.source.trim().length
@@ -456,6 +499,48 @@ Item {
 
                             MouseArea {
                                 anchors.fill: rowText
+                                onClicked: notePreviewEditor.activate(blockItem.block)
+                            }
+                        }
+                    }
+                }
+
+                Column {
+                    id: quoteColumn
+                    visible: !blockItem.editing
+                             && blockItem.block.type === "blockquote"
+                    x: Theme.horizontalPageMargin
+                    width: blockItem.width - Theme.horizontalPageMargin * 2
+
+                    Repeater {
+                        model: blockItem.block.type === "blockquote"
+                               ? blockItem.block.items : []
+
+                        delegate: Item {
+                            id: quoteRow
+                            property var quoteItem: modelData
+                            width: quoteColumn.width
+                            height: quoteText.implicitHeight
+
+                            Rectangle {
+                                x: (quoteRow.quoteItem.depth - 1) * Theme.paddingLarge
+                                width: 3
+                                height: quoteRow.height
+                                color: Theme.highlightColor
+                            }
+
+                            Label {
+                                id: quoteText
+                                x: quoteRow.quoteItem.depth * Theme.paddingLarge
+                                width: quoteRow.width - x
+                                text: notePreviewEditor.renderInline(quoteRow.quoteItem.text)
+                                textFormat: Text.RichText
+                                color: Theme.secondaryColor
+                                wrapMode: Text.Wrap
+                            }
+
+                            MouseArea {
+                                anchors.fill: quoteRow
                                 onClicked: notePreviewEditor.activate(blockItem.block)
                             }
                         }
