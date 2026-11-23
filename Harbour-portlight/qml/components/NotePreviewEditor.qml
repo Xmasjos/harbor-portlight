@@ -68,6 +68,7 @@ Item {
             if (contentEnd > lineStart && value.charAt(contentEnd - 1) === "\r") contentEnd--
             var line = value.substring(lineStart, contentEnd)
             var heading = /^ {0,3}(#{1,6})(?:[ \t]+|$)(.*)$/.exec(line)
+            var horizontalRule = /^ {0,3}(?:-{3,}|_{3,}|\*{3,})[ \t]*$/.test(line)
             var list = /^([ \t]*)([-+*]|\d+[.)])[ \t]+(.*)$/.exec(line)
             var quote = /^ {0,3}((?:>[ \t]?)+)(.*)$/.exec(line)
 
@@ -101,6 +102,24 @@ Item {
                     source: line,
                     type: "heading",
                     level: heading[1].length
+                })
+            } else if (horizontalRule) {
+                flushList()
+                flushQuote()
+                if (paragraphStart >= 0) {
+                    parsed.push({
+                        start: paragraphStart,
+                        end: paragraphEnd,
+                        source: value.substring(paragraphStart, paragraphEnd),
+                        type: "paragraph"
+                    })
+                    paragraphStart = -1
+                }
+                parsed.push({
+                    start: lineStart,
+                    end: contentEnd,
+                    source: line,
+                    type: "horizontal-rule"
                 })
             } else if (quote) {
                 flushList()
@@ -390,17 +409,20 @@ Item {
                 property bool editing: notePreviewEditor.activeIndex === index
                 width: contentColumn.width
                 height: editing ? editArea.height
-                                : (block.type === "list"
+                                : (block.type === "horizontal-rule"
+                                   ? Theme.paddingLarge
+                                   : (block.type === "list"
                                    ? listColumn.implicitHeight
                                    : (block.type === "blockquote"
                                       ? quoteColumn.implicitHeight
-                                      : displayLabel.implicitHeight))
+                                      : displayLabel.implicitHeight)))
 
                 Label {
                     id: displayLabel
                     visible: !blockItem.editing
                              && blockItem.block.type !== "list"
                              && blockItem.block.type !== "blockquote"
+                             && blockItem.block.type !== "horizontal-rule"
                     x: Theme.horizontalPageMargin
                     width: blockItem.width - Theme.horizontalPageMargin * 2
                     text: blockItem.block.source.trim().length
@@ -422,6 +444,22 @@ Item {
                     anchors.fill: displayLabel
                     visible: displayLabel.visible
                     onClicked: notePreviewEditor.activate(blockItem.block)
+                }
+
+                Rectangle {
+                    id: horizontalRule
+                    visible: !blockItem.editing
+                             && blockItem.block.type === "horizontal-rule"
+                    x: Theme.horizontalPageMargin
+                    y: Theme.paddingMedium
+                    width: blockItem.width - Theme.horizontalPageMargin * 2
+                    height: 2
+                    color: Theme.secondaryHighlightColor
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: notePreviewEditor.activate(blockItem.block)
+                    }
                 }
 
                 Column {
