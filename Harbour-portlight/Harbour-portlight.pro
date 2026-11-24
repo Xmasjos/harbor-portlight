@@ -27,10 +27,16 @@ DISTFILES += qml/Harbour-portlight.qml \
     qml/components/VaultEntryDelegate.qml \
     qml/components/NotePreviewEditor.qml \
     qml/components/preview/Parser.js \
-    qml/components/preview/TextBlock.js \
+    qml/components/preview/HeadingBlock.js \
     qml/components/preview/ListBlock.js \
     qml/components/preview/QuoteBlock.js \
     qml/components/preview/RuleBlock.js \
+    qml/components/preview/ChecklistItem.js \
+    qml/components/preview/InlineMarkdown.js \
+    qml/components/preview/Strikethrough.js \
+    qml/components/preview/Emphasis.js \
+    qml/components/preview/ChecklistItem.qml \
+    qml/components/preview/HeadingBlock.qml \
     qml/components/preview/TextBlock.qml \
     qml/components/preview/ListBlock.qml \
     qml/components/preview/QuoteBlock.qml \

@@ -1,9 +1,10 @@
 .pragma library
 
-.import "TextBlock.js" as TextBlock
+.import "HeadingBlock.js" as HeadingBlock
 .import "ListBlock.js" as ListBlock
 .import "QuoteBlock.js" as QuoteBlock
 .import "RuleBlock.js" as RuleBlock
+.import "ChecklistItem.js" as ChecklistItem
 
 function parseBlocks(value) {
     var parsed = []
@@ -51,7 +52,7 @@ function parseBlocks(value) {
         var contentEnd = lineEnd
         if (contentEnd > lineStart && value.charAt(contentEnd - 1) === "\r") contentEnd--
         var line = value.substring(lineStart, contentEnd)
-        var heading = TextBlock.matchHeading(line)
+        var heading = HeadingBlock.matchHeading(line)
         var horizontalRule = RuleBlock.matchHorizontalRule(line)
         var list = ListBlock.matchList(line)
         var quote = QuoteBlock.matchQuote(line)
@@ -132,7 +133,7 @@ function parseBlocks(value) {
                 paragraphStart = -1
             }
             var indentation = list[1].replace(/\t/g, "    ").length
-            var task = /^\[([ xX])\][ \t]*(.*)$/.exec(list[3])
+            var task = ChecklistItem.matchTask(list[3])
             if (listStart < 0) listStart = lineStart
             listEnd = contentEnd
             listItems.push({

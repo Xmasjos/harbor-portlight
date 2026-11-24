@@ -36,59 +36,34 @@ Item {
                 property var listItem: modelData
                 property int itemIndex: index
                 property real markerSize: Theme.fontSizeLarge
+                property bool checklist: listItem.taskState !== null
                 width: listColumn.width
-                height: Math.max(markerSize, rowText.implicitHeight)
+                height: checklist ? checklistItem.implicitHeight
+                                  : Math.max(markerSize, rowText.implicitHeight)
 
                 Item {
                     x: listRow.listItem.indent * Theme.paddingLarge
                     width: listRow.markerSize
                     height: listRow.height
+                    visible: !listRow.checklist
 
                     Label {
                         anchors.fill: parent
-                        visible: listRow.listItem.taskState === null
                         text: listBlock.marker(listRow.itemIndex)
                         color: Theme.primaryColor
                         font.pixelSize: Theme.fontSizeMedium
                         verticalAlignment: Text.AlignVCenter
                     }
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        visible: listRow.listItem.taskState !== null
-                        width: listRow.markerSize - 4
-                        height: width
-                        color: "transparent"
-                        border.color: Theme.primaryColor
-                        border.width: 2
-                        radius: 3
-
-                        Label {
-                            anchors.centerIn: parent
-                            visible: listRow.listItem.taskState === "x"
-                            text: "✓"
-                            color: Theme.primaryColor
-                            font.pixelSize: Theme.fontSizeMedium
-                            font.bold: true
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: listBlock.taskToggled(listRow.itemIndex)
-                        }
-                    }
                 }
 
                 Label {
                     id: rowText
+                    visible: !listRow.checklist
                     x: listRow.listItem.indent * Theme.paddingLarge
                        + listRow.markerSize + Theme.paddingSmall
                     width: listRow.width - x
                     text: listBlock.renderInline
-                          ? (listRow.listItem.taskState === "x"
-                             ? "<s>" + listBlock.renderInline(listRow.listItem.text) + "</s>"
-                             : listBlock.renderInline(listRow.listItem.text))
-                          : ""
+                          ? listBlock.renderInline(listRow.listItem.text) : ""
                     textFormat: Text.RichText
                     color: Theme.primaryColor
                     wrapMode: Text.Wrap
@@ -96,7 +71,20 @@ Item {
 
                 MouseArea {
                     anchors.fill: rowText
+                    visible: rowText.visible
                     onClicked: listBlock.activated()
+                }
+
+                ChecklistItem {
+                    id: checklistItem
+                    visible: listRow.checklist
+                    x: listRow.listItem.indent * Theme.paddingLarge
+                    width: listRow.width - x
+                    itemText: listRow.listItem.text
+                    checked: listRow.listItem.taskState === "x"
+                    renderInline: listBlock.renderInline
+                    onToggled: listBlock.taskToggled(listRow.itemIndex)
+                    onActivated: listBlock.activated()
                 }
             }
         }

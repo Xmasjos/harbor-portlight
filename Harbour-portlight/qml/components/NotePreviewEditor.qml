@@ -2,6 +2,8 @@ import QtQuick 2.0
 import Sailfish.Silica 1.0
 import "preview"
 import "preview/Parser.js" as Parser
+import "preview/ChecklistItem.js" as ChecklistMatcher
+import "preview/InlineMarkdown.js" as InlineMarkdown
 
 Item {
     id: notePreviewEditor
@@ -30,10 +32,7 @@ Item {
 
         var item = block.items[itemIndex]
         var line = sourceText.substring(item.start, item.end)
-        var taskLine = line.replace(/^([ \t]*(?:[-+*]|\d+[.)])[ \t]+\[)([ xX])(\][ \t]*)/,
-                                     function(match, prefix, state, suffix) {
-                                         return prefix + (state.toLowerCase() === "x" ? " " : "x") + suffix
-                                     })
+        var taskLine = ChecklistMatcher.toggleLine(line)
         if (taskLine === line) return
 
         sourceText = sourceText.substring(0, item.start)
@@ -41,107 +40,6 @@ Item {
                    + sourceText.substring(item.end)
         blocks = Parser.parseBlocks(sourceText)
         textEdited(sourceText)
-    }
-
-    function escapeHtml(value) {
-        return value.replace(/&/g, "&amp;")
-                    .replace(/</g, "&lt;")
-                    .replace(/>/g, "&gt;")
-                    .replace(/"/g, "&quot;")
-                    .replace(/'/g, "&#39;")
-                    .replace(/\n/g, "<br>")
-    }
-
-    function renderInline(source) {
-        var output = ""
-        var plain = ""
-        var i = 0
-
-        function flushPlain() {
-            if (!plain.length) return
-            output += escapeHtml(plain)
-            plain = ""
-        }
-
-        while (i < source.length) {
-            var character = source.charAt(i)
-
-            if (character === "\\" && i + 1 < source.length) {
-                plain += source.charAt(i + 1)
-                i += 2
-                continue
-            }
-
-            if (character === "~" && source.substr(i, 2) === "~~") {
-                var strikeClose = source.indexOf("~~", i + 2)
-                if (strikeClose >= i + 2) {
-                    var strikeText = source.substring(i + 2, strikeClose)
-                    if (strikeText.length) {
-                        flushPlain()
-                        output += "<s>" + notePreviewEditor.renderInline(strikeText) + "</s>"
-                        i = strikeClose + 2
-                        continue
-                    }
-                }
-            }
-
-            if (character !== "*" && character !== "_") {
-                plain += character
-                i++
-                continue
-            }
-
-            var markerLength = 1
-            if (source.substr(i, 3) === character + character + character)
-                markerLength = 3
-            else if (source.substr(i, 2) === character + character)
-                markerLength = 2
-
-            var markerText = markerLength === 3
-                           ? "***" : (markerLength === 2 ? "**" : "*")
-            if (character === "_")
-                markerText = markerLength === 3
-                           ? "___" : (markerLength === 2 ? "__" : "_")
-
-            var close = source.indexOf(markerText, i + markerLength)
-            if (close < 0) {
-                plain += character
-                i++
-                continue
-            }
-
-            var inner = source.substring(i + markerLength, close)
-            if (!inner.length) {
-                plain += character
-                i++
-                continue
-            }
-
-            if (markerLength === 1 && character === "_"
-                    && ((i > 0 && /\w/.test(source.charAt(i - 1)))
-                        || (close + 1 < source.length
-                            && /\w/.test(source.charAt(close + 1)))))
-                inner = null
-
-            if (inner === null) {
-                plain += character
-                i++
-                continue
-            }
-
-            flushPlain()
-            var rendered = notePreviewEditor.renderInline(inner)
-            if (markerLength === 3)
-                output += "<b><i>" + rendered + "</i></b>"
-            else if (markerLength === 2)
-                output += "<b>" + rendered + "</b>"
-            else
-                output += "<i>" + rendered + "</i>"
-            i = close + markerLength
-        }
-
-        flushPlain()
-        return output
     }
 
     function activate(targetBlock) {
@@ -223,17 +121,25 @@ Item {
                                       ? listBlock.implicitHeight
                                       : (block.type === "blockquote"
                                          ? quoteBlock.implicitHeight
-                                         : textBlock.implicitHeight)))
+                                         : (block.type === "heading"
+                                            ? headingBlock.implicitHeight
+                                            : textBlock.implicitHeight))))
 
                 TextBlock {
                     id: textBlock
-                    visible: !blockItem.editing
-                             && blockItem.block.type !== "list"
-                             && blockItem.block.type !== "blockquote"
-                             && blockItem.block.type !== "horizontal-rule"
+                    visible: !blockItem.editing && blockItem.block.type === "paragraph"
                     width: blockItem.width
                     block: blockItem.block
-                    renderInline: notePreviewEditor.renderInline
+                    renderInline: InlineMarkdown.render
+                    onActivated: notePreviewEditor.activate(blockItem.block)
+                }
+
+                HeadingBlock {
+                    id: headingBlock
+                    visible: !blockItem.editing && blockItem.block.type === "heading"
+                    width: blockItem.width
+                    block: blockItem.block
+                    renderInline: InlineMarkdown.render
                     onActivated: notePreviewEditor.activate(blockItem.block)
                 }
 
@@ -250,7 +156,7 @@ Item {
                     visible: !blockItem.editing && blockItem.block.type === "list"
                     width: blockItem.width
                     block: blockItem.block
-                    renderInline: notePreviewEditor.renderInline
+                    renderInline: InlineMarkdown.render
                     onActivated: notePreviewEditor.activate(blockItem.block)
                     onTaskToggled: notePreviewEditor.toggleTask(blockItem.blockIndex, itemIndex)
                 }
@@ -260,7 +166,7 @@ Item {
                     visible: !blockItem.editing && blockItem.block.type === "blockquote"
                     width: blockItem.width
                     block: blockItem.block
-                    renderInline: notePreviewEditor.renderInline
+                    renderInline: InlineMarkdown.render
                     onActivated: notePreviewEditor.activate(blockItem.block)
                 }
 
