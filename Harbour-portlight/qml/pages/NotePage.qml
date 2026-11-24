@@ -28,13 +28,6 @@ Page {
         return slash < 0 ? path : path.substring(slash + 1)
     }
 
-    function updateWebEditor() {
-        if (!webEditorLoader.item) return
-        webEditorLoader.item.title = noteFileName(notePath).replace(/\.md$/i, "")
-        webEditorLoader.item.text = noteContent
-        webEditorLoader.item.status = editorStatus
-    }
-
     function renameNote(name) {
         var cleanName = name.trim()
         cleanName = cleanName.replace(/\.md$/i, "")
@@ -44,7 +37,6 @@ Page {
                 || /[\u0000-\u001F]/.test(cleanName) || cleanName.length > 255) {
             if (sourceEditorLoader.item) sourceEditorLoader.item.resetTitle()
             if (previewEditorLoader.item) previewEditorLoader.item.resetTitle()
-            if (webEditorLoader.item) webEditorLoader.item.updateTitle()
             return
         }
         var slash = notePage.notePath.lastIndexOf("/")
@@ -61,7 +53,6 @@ Page {
             notePage.saveStatus = "Rename failed: " + result.error
             if (sourceEditorLoader.item) sourceEditorLoader.item.resetTitle()
             if (previewEditorLoader.item) previewEditorLoader.item.resetTitle()
-            if (webEditorLoader.item) webEditorLoader.item.updateTitle()
         }
     }
 
@@ -144,9 +135,7 @@ Page {
     onNoteContentChanged: {
         if (applicationWindow.autoSave && noteContent !== savedContent) autoSaveTimer.restart()
         else autoSaveTimer.stop()
-        updateWebEditor()
     }
-    onEditorStatusChanged: updateWebEditor()
 
     onVisibleChanged: {
         if (visible && applicationWindow) {
@@ -155,7 +144,6 @@ Page {
         }
         if (visible) vault.watchNote(notePath)
         else vault.unwatchNote()
-        updateWebEditor()
     }
     onNotePathChanged: {
         if (visible && applicationWindow) {
@@ -163,7 +151,6 @@ Page {
             applicationWindow.currentFolder = noteFolder(notePath)
         }
         if (visible) vault.watchNote(notePath)
-        updateWebEditor()
     }
     Component.onCompleted: {
         notePage.savedContent = notePage.noteContent
@@ -187,11 +174,6 @@ Page {
                 text: "Use source editor"
                 visible: notePage.editorMode !== "source"
                 onClicked: notePage.editorMode = "source"
-            }
-            MenuItem {
-                text: "Use HTML editor"
-                visible: notePage.editorMode !== "html"
-                onClicked: notePage.editorMode = "html"
             }
             MenuItem {
                 text: "Use preview editor"
@@ -249,19 +231,6 @@ Page {
                         onTextEdited: function(value) { notePage.noteContent = value }
                         onTitleEdited: function(value) { notePage.renameNote(value) }
                     }
-                }
-            }
-            Loader {
-                id: webEditorLoader
-                active: notePage.editorMode === "html"
-                visible: active
-                source: active ? "../components/WebNoteEditor.qml" : ""
-                width: parent.width
-                height: active ? notePage.height : 0
-                onLoaded: {
-                    item.textEdited.connect(function(value) { notePage.noteContent = value })
-                    item.titleEdited.connect(function(value) { notePage.renameNote(value) })
-                    notePage.updateWebEditor()
                 }
             }
         }
