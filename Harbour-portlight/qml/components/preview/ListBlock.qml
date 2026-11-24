@@ -10,6 +10,7 @@ Item {
 
     signal activated()
     signal taskToggled(int itemIndex)
+    signal linkActivated(string url)
 
     function marker(itemIndex) {
         var item = block.items[itemIndex]
@@ -67,6 +68,7 @@ Item {
                     textFormat: Text.RichText
                     color: Theme.primaryColor
                     wrapMode: Text.Wrap
+                    onLinkActivated: listBlock.linkActivated(link)
                 }
 
                 MouseArea {
@@ -85,6 +87,7 @@ Item {
                     renderInline: listBlock.renderInline
                     onToggled: listBlock.taskToggled(listRow.itemIndex)
                     onActivated: listBlock.activated()
+                    onLinkActivated: listBlock.linkActivated(url)
                 }
             }
         }

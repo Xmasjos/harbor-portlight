@@ -228,8 +228,14 @@ Page {
                         title: notePage.noteFileName(notePage.notePath).replace(/\.md$/i, "")
                         text: notePage.noteContent
                         status: notePage.editorStatus
+                        notePath: notePage.notePath
                         onTextEdited: function(value) { notePage.noteContent = value }
                         onTitleEdited: function(value) { notePage.renameNote(value) }
+                        onLinkActivated: function(url) {
+                            if (url.indexOf("file://") === 0 || /^https?:/i.test(url)
+                                    || /^mailto:/i.test(url) || /^tel:/i.test(url))
+                                Qt.openUrlExternally(url)
+                        }
                     }
                 }
             }

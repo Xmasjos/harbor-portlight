@@ -11,6 +11,7 @@ Item {
     property string title
     property string text
     property string status
+    property string notePath
     property var blocks: []
     property string sourceText: ""
     property int activeIndex: -1
@@ -20,9 +21,19 @@ Item {
 
     signal textEdited(string text)
     signal titleEdited(string title)
+    signal linkActivated(string url)
 
     function resetTitle() {
         titleField.text = notePreviewEditor.title
+    }
+
+    function noteFolder(path) {
+        var slash = path.lastIndexOf("/")
+        return slash < 0 ? "" : path.substring(0, slash)
+    }
+
+    function renderPreviewInline(source) {
+        return InlineMarkdown.render(source, sourceText, noteFolder(notePath))
     }
 
     function toggleTask(blockIndex, itemIndex) {
@@ -130,8 +141,9 @@ Item {
                     visible: !blockItem.editing && blockItem.block.type === "paragraph"
                     width: blockItem.width
                     block: blockItem.block
-                    renderInline: InlineMarkdown.render
+                    renderInline: notePreviewEditor.renderPreviewInline
                     onActivated: notePreviewEditor.activate(blockItem.block)
+                    onLinkActivated: notePreviewEditor.linkActivated(url)
                 }
 
                 HeadingBlock {
@@ -139,8 +151,9 @@ Item {
                     visible: !blockItem.editing && blockItem.block.type === "heading"
                     width: blockItem.width
                     block: blockItem.block
-                    renderInline: InlineMarkdown.render
+                    renderInline: notePreviewEditor.renderPreviewInline
                     onActivated: notePreviewEditor.activate(blockItem.block)
+                    onLinkActivated: notePreviewEditor.linkActivated(url)
                 }
 
                 RuleBlock {
@@ -156,9 +169,10 @@ Item {
                     visible: !blockItem.editing && blockItem.block.type === "list"
                     width: blockItem.width
                     block: blockItem.block
-                    renderInline: InlineMarkdown.render
+                    renderInline: notePreviewEditor.renderPreviewInline
                     onActivated: notePreviewEditor.activate(blockItem.block)
                     onTaskToggled: notePreviewEditor.toggleTask(blockItem.blockIndex, itemIndex)
+                    onLinkActivated: notePreviewEditor.linkActivated(url)
                 }
 
                 QuoteBlock {
@@ -166,8 +180,9 @@ Item {
                     visible: !blockItem.editing && blockItem.block.type === "blockquote"
                     width: blockItem.width
                     block: blockItem.block
-                    renderInline: InlineMarkdown.render
+                    renderInline: notePreviewEditor.renderPreviewInline
                     onActivated: notePreviewEditor.activate(blockItem.block)
+                    onLinkActivated: notePreviewEditor.linkActivated(url)
                 }
 
                 TextArea {

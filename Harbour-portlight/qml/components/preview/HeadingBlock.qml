@@ -10,6 +10,7 @@ Item {
     implicitHeight: headingLabel.implicitHeight
 
     signal activated()
+    signal linkActivated(string url)
 
     Label {
         id: headingLabel
@@ -23,6 +24,7 @@ Item {
         wrapMode: Text.Wrap
         font.pixelSize: headingPixelSize(headingBlock.block.level)
         font.bold: true
+        onLinkActivated: headingBlock.linkActivated(link)
 
         function headingPixelSize(level) {
             if (level <= 1) return Theme.fontSizeHuge

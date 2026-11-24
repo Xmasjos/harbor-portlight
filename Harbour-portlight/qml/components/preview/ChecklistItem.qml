@@ -13,6 +13,7 @@ Item {
 
     signal toggled()
     signal activated()
+    signal linkActivated(string url)
 
     Rectangle {
         x: 0
@@ -51,6 +52,7 @@ Item {
         textFormat: Text.RichText
         color: Theme.primaryColor
         wrapMode: Text.Wrap
+        onLinkActivated: checklistItem.linkActivated(link)
     }
 
     MouseArea {

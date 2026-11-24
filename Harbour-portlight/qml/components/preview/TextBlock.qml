@@ -9,6 +9,7 @@ Item {
     implicitHeight: displayLabel.implicitHeight
 
     signal activated()
+    signal linkActivated(string url)
 
     Label {
         id: displayLabel
@@ -23,6 +24,7 @@ Item {
         color: Theme.primaryColor
         wrapMode: Text.Wrap
         font.pixelSize: Theme.fontSizeMedium
+        onLinkActivated: textBlock.linkActivated(link)
     }
 
     MouseArea {

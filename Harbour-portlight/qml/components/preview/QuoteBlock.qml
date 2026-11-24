@@ -9,6 +9,7 @@ Item {
     implicitHeight: quoteColumn.implicitHeight
 
     signal activated()
+    signal linkActivated(string url)
 
     Column {
         id: quoteColumn
@@ -40,6 +41,7 @@ Item {
                     textFormat: Text.RichText
                     color: Theme.secondaryColor
                     wrapMode: Text.Wrap
+                    onLinkActivated: quoteBlock.linkActivated(link)
                 }
 
                 MouseArea {
