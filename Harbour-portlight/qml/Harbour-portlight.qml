@@ -16,6 +16,18 @@ ApplicationWindow {
     property alias showUnsupportedFiles: persistedSettings.showUnsupportedFiles
     property alias quickNoteFolder: persistedSettings.quickNoteFolder
 
+    function createNoteWithUniqueName(pathForSuffix, createNote) {
+        var suffix = 0
+        var path = pathForSuffix(suffix)
+        var result = createNote(path)
+        while (!result.ok && result.error === "A note with that name already exists" && suffix < 999) {
+            suffix++
+            path = pathForSuffix(suffix)
+            result = createNote(path)
+        }
+        return { path: path, result: result }
+    }
+
     ConfigurationGroup {
         id: persistedSettings
         path: "/apps/harbour-portlight"
@@ -47,14 +59,12 @@ ApplicationWindow {
         var base = "Quick note " + now.getFullYear() + "-" + twoDigits(now.getMonth() + 1)
                 + "-" + twoDigits(now.getDate()) + " " + twoDigits(now.getHours())
                 + "-" + twoDigits(now.getMinutes()) + "-" + twoDigits(now.getSeconds())
-        var path = (folder.length ? folder + "/" : "") + base + ".md"
-        var result = vault.createNote(path, "")
-        var suffix = 1
-        while (!result.ok && result.error === "A note with that name already exists" && suffix < 1000) {
-            path = (folder.length ? folder + "/" : "") + base + " " + suffix + ".md"
-            result = vault.createNote(path, "")
-            suffix++
-        }
+        var created = app.createNoteWithUniqueName(function(suffix) {
+            return (folder.length ? folder + "/" : "") + base
+                    + (suffix ? " " + suffix : "") + ".md"
+        }, function(path) { return vault.createNote(path, "") })
+        var path = created.path
+        var result = created.result
         if (!result.ok) {
             pageStack.push(quickCaptureErrorPage, {
                 applicationWindow: app,
@@ -73,15 +83,11 @@ ApplicationWindow {
 
     function createNoteFromCover() {
         var base = currentFolder.length ? currentFolder + "/" : ""
-        var path = base + "Untitled.md"
-        var suffix = 1
-        var result = vault.createNote(path, "")
-        while (!result.ok && suffix < 1000) {
-            if (result.error !== "A note with that name already exists") break
-            path = base + "Untitled " + suffix + ".md"
-            result = vault.createNote(path, "")
-            suffix++
-        }
+        var created = app.createNoteWithUniqueName(function(suffix) {
+            return base + "Untitled" + (suffix ? " " + suffix : "") + ".md"
+        }, function(path) { return vault.createNote(path, "") })
+        var path = created.path
+        var result = created.result
         if (result.ok) {
             currentNote = path
             pageStack.push(notePage, {

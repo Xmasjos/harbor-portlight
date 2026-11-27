@@ -112,14 +112,11 @@ Page {
         var slash = notePage.notePath.lastIndexOf("/")
         var folder = slash < 0 ? "" : notePage.notePath.substring(0, slash + 1)
         var base = fileName.replace(/\.md$/i, "")
-        var destination = folder + base + " (copy).md"
-        var suffix = 1
-        var result = vault.createNote(destination, notePage.noteContent)
-        while (!result.ok && result.error === "A note with that name already exists" && suffix < 1000) {
-            destination = folder + base + " (copy " + suffix + ").md"
-            result = vault.createNote(destination, notePage.noteContent)
-            suffix++
-        }
+        var created = notePage.applicationWindow.createNoteWithUniqueName(function(suffix) {
+            return folder + base + " (copy" + (suffix ? " " + suffix : "") + ").md"
+        }, function(path) { return vault.createNote(path, notePage.noteContent) })
+        var destination = created.path
+        var result = created.result
         if (result.ok) {
             notePage.saveStatus = "Current text saved as " + destination.substring(destination.lastIndexOf("/") + 1)
         } else {

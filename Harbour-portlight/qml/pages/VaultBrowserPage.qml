@@ -105,15 +105,11 @@ Page {
 
     function createUntitledNote() {
         var base = currentFolder.length ? currentFolder + "/" : ""
-        var path = base + "Untitled.md"
-        var suffix = 1
-        var result = vault.createNote(path, "")
-        while (!result.ok && suffix < 1000) {
-            if (result.error !== "A note with that name already exists") break
-            path = base + "Untitled " + suffix + ".md"
-            result = vault.createNote(path, "")
-            suffix++
-        }
+        var created = applicationWindow.createNoteWithUniqueName(function(suffix) {
+            return base + "Untitled" + (suffix ? " " + suffix : "") + ".md"
+        }, function(path) { return vault.createNote(path, "") })
+        var path = created.path
+        var result = created.result
         if (result.ok) {
             pageStack.push(notePage, {
                 notePath: path,
@@ -300,18 +296,10 @@ Page {
                         { currentFolder: vaultBrowserPage.parentFolder(sourcePath) })
                     }
                     copyCallback: function(entry) {
-                        var sourcePath = entry.path
-                        var isFolder = entry.type === "folder"
-                        var defaultPath = isFolder ? sourcePath + " copy"
-                                                    : sourcePath.replace(/\.md$/i, " copy.md")
-                        vaultBrowserPage.askPath(isFolder ? "Copy folder to" : "Copy note to", defaultPath,
-                                     "Destination path", function(path, dialog) {
-                            var result = isFolder ? vault.copyFolder(sourcePath, path)
-                                                  : vault.copyNote(sourcePath, path)
-                            if (result.ok) dialog.acceptDestinationInstance.refreshFolder()
-                            else dialog.returnToSource(result.error)
-                        }, vaultBrowserPageComponent, "destination",
-                        { currentFolder: vaultBrowserPage.parentFolder(defaultPath) })
+                        pageStack.push(copyFolderPicker, {
+                            sourcePath: entry.path,
+                            isFolder: entry.type === "folder"
+                        })
                     }
                     moveCallback: function(entry) {
                         pageStack.push(moveFolderPicker, {
@@ -404,6 +392,54 @@ Page {
     Component {
         id: settingsPage
         SettingsPage {}
+    }
+
+    Component {
+        id: copyFolderPicker
+        FolderPickerDialog {
+            property string sourcePath: ""
+            property bool isFolder: false
+            title: isFolder ? "Copy folder to" : "Copy note to"
+            path: vault.vaultPath
+
+            onAccepted: {
+                var root = vault.vaultPath
+                var selected = selectedPath.replace(/\/$/, "")
+                var destinationFolder
+                if (selected === root) {
+                    destinationFolder = ""
+                } else if (selected.indexOf(root + "/") === 0) {
+                    destinationFolder = selected.substring(root.length + 1)
+                } else {
+                    vaultBrowserPage.scanStatus = "Choose a folder inside the configured vault"
+                    return
+                }
+
+                var name = sourcePath.substring(sourcePath.lastIndexOf("/") + 1)
+                var extension = isFolder ? "" : ".md"
+                var base = isFolder ? name : name.replace(/\.md$/i, "")
+                var result
+                var destination
+                if (isFolder) {
+                    var copyName = base + " (copy)"
+                    destination = destinationFolder.length ? destinationFolder + "/" + copyName : copyName
+                    result = vault.copyFolder(sourcePath, destination)
+                } else {
+                    var created = vaultBrowserPage.applicationWindow.createNoteWithUniqueName(function(suffix) {
+                        var copyName = base + " (copy" + (suffix ? " " + suffix : "") + ")" + extension
+                        return destinationFolder.length ? destinationFolder + "/" + copyName : copyName
+                    }, function(path) { return vault.copyNote(sourcePath, path) })
+                    destination = created.path
+                    result = created.result
+                }
+                if (result.ok) {
+                    vaultBrowserPage.currentFolder = destinationFolder
+                    vaultBrowserPage.refreshFolder(true)
+                } else {
+                    vaultBrowserPage.scanStatus = result.error
+                }
+            }
+        }
     }
 
     Component {
