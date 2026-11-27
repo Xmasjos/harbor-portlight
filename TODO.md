@@ -199,7 +199,7 @@ Current device workflow: search the configured vault, open a Markdown note, edit
 ## 21. Reduce processor usage
 - When the app is not in the foreground, stop active folder watches so no folder watches remain running in the background.
 
-## 22. Log on quit issue
+## 22. Log on quit issue (fixed)
 - Resolve the log on app exit: [W] unknown:174 - file:///usr/share/Harbour-portlight/qml/pages/NotePage.qml:174: TypeError: Cannot call method 'unwatchNote' of null
 
 

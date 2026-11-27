@@ -139,23 +139,25 @@ Page {
             applicationWindow.currentNote = notePath
             applicationWindow.currentFolder = noteFolder(notePath)
         }
-        if (visible) vault.watchNote(notePath)
-        else vault.unwatchNote()
+        if (vault) {
+            if (visible) vault.watchNote(notePath)
+            else vault.unwatchNote()
+        }
     }
     onNotePathChanged: {
         if (visible && applicationWindow) {
             applicationWindow.currentNote = notePath
             applicationWindow.currentFolder = noteFolder(notePath)
         }
-        if (visible) vault.watchNote(notePath)
+        if (visible && vault) vault.watchNote(notePath)
     }
     Component.onCompleted: {
         notePage.savedContent = notePage.noteContent
         refreshBaseline()
-        if (visible) vault.watchNote(notePath)
+        if (visible && vault) vault.watchNote(notePath)
     }
     Component.onDestruction: {
-        vault.unwatchNote()
+        if (vault) vault.unwatchNote()
         if (quickCapture) {
             var stored = vault.readNote(notePath)
             if (stored.ok && !stored.content.trim().length) vault.deleteNote(notePath)
