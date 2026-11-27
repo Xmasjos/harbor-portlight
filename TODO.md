@@ -76,7 +76,7 @@ Current device workflow: search the configured vault, open a Markdown note, edit
   - [x] Feature 7
   - [x] Feature 8
   - [ ] Feature 9
-  - [ ] Feature 10
+  - [x] Feature 10
   - [ ] Feature 11
   - [ ] Feature 12
 - [ ] Obsidian formatting extensions ([inventory](docs/obsidian-markdown-features.md#obsidian-formatting-extensions)):
@@ -99,6 +99,11 @@ Current device workflow: search the configured vault, open a Markdown note, edit
   - [ ] Feature 1
   - [ ] Feature 2
   - [ ] Feature 3
+
+### 4.7 Add quick actions for Markdown editing
+
+- Provide shortcuts for common structures, starting with **Start a numbered list** and **Start a todo list**.
+- Explore where these actions belong: the editor's pulley menu, a paragraph context menu, or another compact and discoverable control. Choose the layout based on the number of actions so it remains easy to scan and reach.
 
 ## 5. Create and organize notes (implemented & verified on device)
 
