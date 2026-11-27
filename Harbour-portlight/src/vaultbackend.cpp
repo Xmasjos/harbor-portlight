@@ -15,6 +15,19 @@ Q_LOGGING_CATEGORY(lcVault, "portlight.vault")
 Q_LOGGING_CATEGORY(lcStorage, "portlight.storage")
 
 namespace {
+bool isWithinVault(const QString &root, const QString &path)
+{
+    return !root.isEmpty() && (path == root || path.startsWith(root + QDir::separator()));
+}
+
+bool isValidFolderDestination(const QString &source, const QString &destination)
+{
+    return !source.isEmpty() && !destination.isEmpty()
+            && destination != source
+            && !destination.startsWith(source + QDir::separator())
+            && !QFileInfo::exists(destination);
+}
+
 bool isTextNote(const QFileInfo &file, const QMimeDatabase &mimeDatabase)
 {
     const QString suffix = file.suffix().toLower();
@@ -57,7 +70,7 @@ QString safeNotePath(const QString &vaultPath, const QString &relativePath)
     }
     const QString root = QFileInfo(vaultPath).canonicalFilePath();
     const QString path = QFileInfo(QDir(vaultPath).filePath(cleanedPath)).canonicalFilePath();
-    return !root.isEmpty() && path.startsWith(root + QDir::separator()) ? path : QString();
+    return isWithinVault(root, path) && path != root ? path : QString();
 }
 
 QString safeDestinationPath(const QString &vaultPath, const QString &relativePath)
@@ -69,8 +82,7 @@ QString safeDestinationPath(const QString &vaultPath, const QString &relativePat
     }
     const QString root = QFileInfo(vaultPath).canonicalFilePath();
     const QString parent = QFileInfo(QDir(vaultPath).filePath(QFileInfo(cleaned).path())).canonicalFilePath();
-    if (root.isEmpty() || parent.isEmpty()
-            || (parent != root && !parent.startsWith(root + QDir::separator()))) {
+    if (!isWithinVault(root, parent)) {
         return QString();
     }
     const QString path = QDir(parent).filePath(QFileInfo(cleaned).fileName());
@@ -87,7 +99,7 @@ QString safeFolderPath(const QString &vaultPath, const QString &relativePath)
     }
     const QString root = QFileInfo(vaultPath).canonicalFilePath();
     const QString path = QFileInfo(QDir(vaultPath).filePath(cleaned)).canonicalFilePath();
-    return !root.isEmpty() && path.startsWith(root + QDir::separator())
+    return isWithinVault(root, path) && path != root
             && QFileInfo(path).isDir() && !QFileInfo(path).isSymLink() ? path : QString();
 }
 
@@ -163,8 +175,7 @@ void VaultBackend::watchFolder(const QString &relativeFolder)
     const QString root = QFileInfo(m_vaultPath).canonicalFilePath();
     const QString folder = relativeFolder.isEmpty()
             ? root : QFileInfo(QDir(m_vaultPath).filePath(cleanedFolder)).canonicalFilePath();
-    if (root.isEmpty() || folder.isEmpty()
-            || (folder != root && !folder.startsWith(root + QDir::separator()))
+    if (!isWithinVault(root, folder)
             || !QFileInfo(folder).isDir() || !QDir(folder).isReadable()) {
         return;
     }
@@ -201,8 +212,7 @@ QVariantMap VaultBackend::listVaultEntries(const QString &relativeFolder) const
     const QString root = QFileInfo(m_vaultPath).canonicalFilePath();
     const QString folderPath = relativeFolder.isEmpty()
             ? root : QFileInfo(QDir(m_vaultPath).filePath(cleanedFolder)).canonicalFilePath();
-    if (root.isEmpty() || folderPath.isEmpty()
-            || (folderPath != root && !folderPath.startsWith(root + QDir::separator()))
+    if (!isWithinVault(root, folderPath)
             || !QFileInfo(folderPath).isDir()) {
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Folder is outside the vault or does not exist")}};
     }
@@ -411,8 +421,7 @@ QVariantMap VaultBackend::createFolder(const QString &relativePath) const
     }
     const QString root = QFileInfo(m_vaultPath).canonicalFilePath();
     const QString parent = QFileInfo(QDir(m_vaultPath).filePath(QFileInfo(cleaned).path())).canonicalFilePath();
-    if (root.isEmpty() || parent.isEmpty()
-            || (parent != root && !parent.startsWith(root + QDir::separator()))) {
+    if (!isWithinVault(root, parent)) {
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Folder is outside the vault")}};
     }
     const QString path = QDir(parent).filePath(QFileInfo(cleaned).fileName());
@@ -441,10 +450,7 @@ QVariantMap VaultBackend::copyFolder(const QString &relativePath, const QString 
 {
     const QString source = safeFolderPath(m_vaultPath, relativePath);
     const QString destination = safeDestinationPath(m_vaultPath, destinationPath);
-    const QString sourcePrefix = source + QDir::separator();
-    if (source.isEmpty() || destination.isEmpty()
-            || destination == source || destination.startsWith(sourcePrefix)
-            || QFileInfo::exists(destination)) {
+    if (!isValidFolderDestination(source, destination)) {
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Invalid or existing destination folder")}};
     }
     if (!copyDirectory(source, destination)) {
@@ -459,10 +465,7 @@ QVariantMap VaultBackend::moveFolder(const QString &relativePath, const QString 
 {
     const QString source = safeFolderPath(m_vaultPath, relativePath);
     const QString destination = safeDestinationPath(m_vaultPath, destinationPath);
-    const QString sourcePrefix = source + QDir::separator();
-    if (source.isEmpty() || destination.isEmpty()
-            || destination == source || destination.startsWith(sourcePrefix)
-            || QFileInfo::exists(destination)) {
+    if (!isValidFolderDestination(source, destination)) {
         return {{QStringLiteral("ok"), false}, {QStringLiteral("error"), QStringLiteral("Invalid or existing destination folder")}};
     }
     if (!QDir().rename(source, destination)) {
