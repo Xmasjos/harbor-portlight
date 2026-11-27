@@ -2,6 +2,7 @@ import QtQuick 2.0
 import Sailfish.Silica 1.0
 import "preview"
 import "preview/Parser.js" as Parser
+import "preview/ListBlock.js" as ListMatcher
 import "preview/ChecklistItem.js" as ChecklistMatcher
 import "preview/InlineMarkdown.js" as InlineMarkdown
 
@@ -34,6 +35,38 @@ Item {
 
     function renderPreviewInline(source) {
         return InlineMarkdown.render(source, sourceText, noteFolder(notePath))
+    }
+
+    function insertedNewlinePosition(previous, current, cursor) {
+        var prefixLength = 0
+        while (prefixLength < previous.length && prefixLength < current.length
+               && previous.charAt(prefixLength) === current.charAt(prefixLength))
+            prefixLength++
+
+        var suffixLength = 0
+        while (suffixLength < previous.length - prefixLength
+               && suffixLength < current.length - prefixLength
+               && previous.charAt(previous.length - suffixLength - 1)
+                  === current.charAt(current.length - suffixLength - 1))
+            suffixLength++
+
+        var oldChangedText = previous.substring(prefixLength, previous.length - suffixLength)
+        var changedText = current.substring(prefixLength, current.length - suffixLength)
+        var newlineOffset = changedText.indexOf("\n")
+        if (newlineOffset < 0 || oldChangedText.indexOf("\n") >= 0) return -1
+
+        var position = cursor - 1
+        return current.charAt(position) === "\n" ? position : prefixLength + newlineOffset
+    }
+
+    function taskContinuation(line) {
+        var list = ListMatcher.matchList(line)
+        if (!list || !ChecklistMatcher.matchTask(list[3])) return null
+
+        var marker = list[2]
+        var number = /^(\d+)([.)])$/.exec(marker)
+        if (number) marker = (parseInt(number[1], 10) + 1) + number[2]
+        return list[1] + marker + " [ ] "
     }
 
     function toggleTask(blockIndex, itemIndex) {
@@ -187,17 +220,43 @@ Item {
 
                 TextArea {
                     id: editArea
+                    property string previousText: ""
+                    property bool expandingTaskItem: false
                     visible: blockItem.editing
                     width: blockItem.width
                     height: visible ? Math.max(Theme.itemSizeMedium, implicitHeight) : 0
                     text: blockItem.block.source
                     placeholderText: "Markdown source"
                     label: "Paragraph source"
-                    onVisibleChanged: if (visible) forceActiveFocus()
-                    onTextChanged: {
-                        if (blockItem.editing && blockItem.block.source !== text) {
-                            notePreviewEditor.updateBlock(index, text)
+                    onVisibleChanged: {
+                        if (visible) {
+                            previousText = text
+                            forceActiveFocus()
                         }
+                    }
+                    onTextChanged: {
+                        if (!blockItem.editing || expandingTaskItem) return
+
+                        var newlinePosition = notePreviewEditor.insertedNewlinePosition(
+                                    previousText, text, cursorPosition)
+                        if (newlinePosition >= 0) {
+                            var lineStart = text.lastIndexOf("\n", newlinePosition - 1) + 1
+                            var continuation = notePreviewEditor.taskContinuation(
+                                        text.substring(lineStart, newlinePosition))
+                            if (continuation !== null) {
+                                var insertPosition = newlinePosition + 1
+                                var updatedText = text.substring(0, insertPosition) + continuation
+                                                + text.substring(insertPosition)
+                                expandingTaskItem = true
+                                text = updatedText
+                                cursorPosition = insertPosition + continuation.length
+                                expandingTaskItem = false
+                            }
+                        }
+
+                        previousText = text
+                        if (blockItem.block.source !== text)
+                            notePreviewEditor.updateBlock(index, text)
                     }
                     onActiveFocusChanged: {
                         if (!activeFocus && blockItem.editing)
