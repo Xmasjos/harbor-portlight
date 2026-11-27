@@ -75,10 +75,10 @@ Current device workflow: search the configured vault, open a Markdown note, edit
   - [x] Feature 6
   - [x] Feature 7
   - [x] Feature 8
-  - [ ] Feature 9
+  - [x] Feature 9
   - [x] Feature 10
-  - [ ] Feature 11
-  - [ ] Feature 12
+  - [x] Feature 11
+  - [x] Feature 12
 - [ ] Obsidian formatting extensions ([inventory](docs/obsidian-markdown-features.md#obsidian-formatting-extensions)):
   - [ ] Feature 1
   - [ ] Feature 2

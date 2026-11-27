@@ -158,17 +158,18 @@ Item {
                 property var block: modelData
                 property int blockIndex: index
                 property bool editing: notePreviewEditor.activeIndex === index
+                property var blockViews: ({
+                    paragraph: textBlock,
+                    heading: headingBlock,
+                    "horizontal-rule": ruleBlock,
+                    code: codeBlockView,
+                    table: tableBlockView,
+                    list: listBlock,
+                    blockquote: quoteBlock
+                })
                 width: contentColumn.width
-                height: editing ? editArea.height
-                                : (block.type === "horizontal-rule"
-                                   ? ruleBlock.implicitHeight
-                                   : (block.type === "list"
-                                      ? listBlock.implicitHeight
-                                      : (block.type === "blockquote"
-                                         ? quoteBlock.implicitHeight
-                                         : (block.type === "heading"
-                                            ? headingBlock.implicitHeight
-                                            : textBlock.implicitHeight))))
+                implicitHeight: editing ? editArea.height : blockViews[block.type].implicitHeight
+                height: implicitHeight
 
                 TextBlock {
                     id: textBlock
@@ -196,6 +197,24 @@ Item {
                              && blockItem.block.type === "horizontal-rule"
                     width: blockItem.width
                     onActivated: notePreviewEditor.activate(blockItem.block)
+                }
+
+                CodeBlock {
+                    id: codeBlockView
+                    visible: !blockItem.editing && blockItem.block.type === "code"
+                    width: blockItem.width
+                    block: blockItem.block
+                    onActivated: notePreviewEditor.activate(blockItem.block)
+                }
+
+                TableBlock {
+                    id: tableBlockView
+                    visible: !blockItem.editing && blockItem.block.type === "table"
+                    width: blockItem.width
+                    block: blockItem.block
+                    renderInline: notePreviewEditor.renderPreviewInline
+                    onActivated: notePreviewEditor.activate(blockItem.block)
+                    onLinkActivated: notePreviewEditor.linkActivated(url)
                 }
 
                 ListBlock {

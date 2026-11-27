@@ -31,6 +31,8 @@ DISTFILES += qml/Harbour-portlight.qml \
     qml/components/preview/ListBlock.js \
     qml/components/preview/QuoteBlock.js \
     qml/components/preview/RuleBlock.js \
+    qml/components/preview/CodeBlock.qml \
+    qml/components/preview/TableBlock.qml \
     qml/components/preview/ChecklistItem.js \
     qml/components/preview/InlineMarkdown.js \
     qml/components/preview/Strikethrough.js \

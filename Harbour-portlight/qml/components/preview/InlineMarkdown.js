@@ -158,9 +158,32 @@ function render(source, documentSource, baseFolder) {
         var character = source.charAt(i)
 
         if (character === "\\" && i + 1 < source.length) {
-            plain += source.charAt(i + 1)
+            var escaped = source.charAt(i + 1)
+            if (/[\\`*_{}\[\]()#+\-.!|>~]/.test(escaped)) plain += escaped
+            else plain += "\\" + escaped
             i += 2
             continue
+        }
+
+        if (character === "`") {
+            var ticks = /^`+/.exec(source.substring(i))[0]
+            var closeCode = source.indexOf(ticks, i + ticks.length)
+            if (closeCode >= 0) {
+                flushPlain()
+                output += "<code>" + escapeHtml(source.substring(i + ticks.length, closeCode).replace(/\n/g, " ")) + "</code>"
+                i = closeCode + ticks.length
+                continue
+            }
+        }
+
+        if (character === "<") {
+            var rawTag = /^<\/?[A-Za-z][^>]*>|^<!--[\s\S]*?-->/.exec(source.substring(i))
+            if (rawTag) {
+                flushPlain()
+                output += rawTag[0]
+                i += rawTag[0].length
+                continue
+            }
         }
 
         var link = matchInlineLink(source, i, references, baseFolder)
