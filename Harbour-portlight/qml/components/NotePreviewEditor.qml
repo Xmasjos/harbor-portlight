@@ -59,14 +59,15 @@ Item {
         return current.charAt(position) === "\n" ? position : prefixLength + newlineOffset
     }
 
-    function taskContinuation(line) {
+    function listContinuation(line) {
         var list = ListMatcher.matchList(line)
-        if (!list || !ChecklistMatcher.matchTask(list[3])) return null
+        if (!list) return null
 
         var marker = list[2]
         var number = /^(\d+)([.)])$/.exec(marker)
         if (number) marker = (parseInt(number[1], 10) + 1) + number[2]
-        return list[1] + marker + " [ ] "
+        var task = ChecklistMatcher.matchTask(list[3])
+        return list[1] + marker + " " + (task ? "[ ] " : "")
     }
 
     function toggleTask(blockIndex, itemIndex) {
@@ -241,7 +242,7 @@ Item {
                                     previousText, text, cursorPosition)
                         if (newlinePosition >= 0) {
                             var lineStart = text.lastIndexOf("\n", newlinePosition - 1) + 1
-                            var continuation = notePreviewEditor.taskContinuation(
+                            var continuation = notePreviewEditor.listContinuation(
                                         text.substring(lineStart, newlinePosition))
                             if (continuation !== null) {
                                 var insertPosition = newlinePosition + 1
