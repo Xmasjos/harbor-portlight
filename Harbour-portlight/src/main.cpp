@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
     VaultBackend vault;
 
     view->rootContext()->setContextProperty(QStringLiteral("vault"), &vault);
-    view->setSource(SailfishApp::pathTo(QStringLiteral("qml/Harbour-portlight.qml")));
+    view->setSource(SailfishApp::pathTo(QStringLiteral("qml/harbour-portlight.qml")));
     view->show();
     qCDebug(lcApplication) << "Application started";
 

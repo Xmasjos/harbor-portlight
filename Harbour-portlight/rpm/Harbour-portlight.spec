@@ -1,4 +1,4 @@
-Name:       Harbour-portlight
+Name:       harbour-portlight
 
 Summary:    Portlight
 Version:    0.1

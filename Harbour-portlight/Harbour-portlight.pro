@@ -10,7 +10,7 @@
 #   - translation filenames have to be changed
 
 # The name of your application
-TARGET = Harbour-portlight
+TARGET = harbour-portlight
 
 CONFIG += sailfishapp
 
@@ -22,7 +22,7 @@ SOURCES += src/main.cpp \
 
 HEADERS += src/vaultbackend.h
 
-DISTFILES += qml/Harbour-portlight.qml \
+DISTFILES += qml/harbour-portlight.qml \
     qml/cover/CoverPage.qml \
     qml/components/VaultEntryDelegate.qml \
     qml/components/NotePreviewEditor.qml \
@@ -54,13 +54,13 @@ DISTFILES += qml/Harbour-portlight.qml \
     qml/editor/frame.js \
     $$CODEMIRROR_BUNDLE \
     qml/editor/assets/codemirror.LICENSE.txt \
-    rpm/Harbour-portlight.changes.in \
-    rpm/Harbour-portlight.changes.run.in \
-    rpm/Harbour-portlight.spec \
+    rpm/harbour-portlight.changes.in \
+    rpm/harbour-portlight.changes.run.in \
+    rpm/harbour-portlight.spec \
     translations/*.ts \
     assets/portlight.svg \
     assets/openharbor/portlight.png \
-    Harbour-portlight.desktop
+    harbour-portlight.desktop
 
 SAILFISHAPP_ICONS = 86x86 108x108 128x128 172x172
 
@@ -74,4 +74,4 @@ PKGCONFIG += qt5embedwidget
 # planning to localize your app, remember to comment out the
 # following TRANSLATIONS line. And also do not forget to
 # modify the localized app name in the the .desktop file.
-TRANSLATIONS += translations/Harbour-portlight-de.ts
+TRANSLATIONS += translations/harbour-portlight-de.ts
