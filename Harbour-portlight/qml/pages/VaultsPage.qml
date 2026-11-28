@@ -9,6 +9,7 @@ Page {
     property Component vaultBrowserPageComponent
     property var paths: []
     property string statusText: ""
+    property string pendingOpenPath: ""
 
     function loadPaths() {
         try { paths = JSON.parse(applicationWindow.registeredVaults) }
@@ -52,6 +53,7 @@ Page {
         savePaths()
         applicationWindow.vaultPath = canonical
         statusText = ""
+        if (paths.length === 1) pendingOpenPath = canonical
         return true
     }
 
@@ -65,7 +67,7 @@ Page {
             MenuItem {
                 text: "Add vault"
                 visible: vaultsPage.paths.length > 0
-                onClicked: pageStack.push(addVaultPicker)
+                onClicked: pageStack.push(folderPicker)
             }
         }
 
@@ -90,7 +92,7 @@ Page {
                 Button {
                     text: "Add your first vault"
                     x: (parent.width - width) / 2
-                    onClicked: pageStack.push(firstVaultPicker)
+                    onClicked: pageStack.push(folderPicker)
                 }
             }
 
@@ -169,31 +171,22 @@ Page {
     }
 
     Component {
-        id: addVaultPicker
+        id: folderPicker
         FolderPickerDialog {
             title: "Choose vault folder"
             onAccepted: vaultsPage.addVault(selectedPath)
         }
     }
 
-    Component {
-        id: firstVaultPicker
-        FolderPickerDialog {
-            title: "Choose vault folder"
-            acceptDestination: vaultsPage.vaultBrowserPageComponent
-            acceptDestinationProperties: ({
-                applicationWindow: vaultsPage.applicationWindow,
-                vaultBrowserPageComponent: vaultsPage.vaultBrowserPageComponent
-            })
-            acceptDestinationAction: PageStackAction.Replace
-            acceptDestinationReplaceTarget: vaultsPage
-
-            onAccepted: {
-                if (!vaultsPage.addVault(selectedPath)) {
-                    acceptDestination = vaultsPage
-                    acceptDestinationAction = PageStackAction.Pop
-                }
-            }
+    Timer {
+        interval: 50
+        repeat: true
+        running: vaultsPage.pendingOpenPath.length > 0
+        onTriggered: {
+            if (pageStack.currentPage !== vaultsPage || pageStack.busy) return
+            var path = vaultsPage.pendingOpenPath
+            vaultsPage.pendingOpenPath = ""
+            vaultsPage.openVault(path)
         }
     }
 }
