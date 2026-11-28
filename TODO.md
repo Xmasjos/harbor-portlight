@@ -1,6 +1,14 @@
 # TODO
 
-Current device workflow: search the configured vault, open a Markdown note, edit it, and save it back to the synced file.
+Current device workflow: choose a registered vault, search it, open a Markdown note, edit it, and save it back to the synced file.
+
+## 0. Manage multiple vaults
+
+- Add a Vaults view as the app root, with an **Add your first vault** empty state and a folder picker for registering vaults. (Implemented; device verification pending.)
+- Open a vault from the list; Back at the vault root returns to the Vaults view. (Implemented; device verification pending.)
+- Add **Open on launch** / **Stop opening on launch** to a vault's context menu when multiple vaults are registered. With one vault, open it automatically and hide the launch setting; with multiple vaults and no launch choice, start at the Vaults view. (Implemented; device verification pending.)
+- Later: consider showing the most recently used vault prominently in the Vaults view; do not automatically open it for now.
+- Later: add search across registered vaults in a separate view, identifying each result's vault. Keep note links scoped to their own vault; cross-vault links are unsupported.
 
 ## 1. Make vault navigation user-friendly (Silica page stack; verified on device)
 

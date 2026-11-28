@@ -11,6 +11,8 @@ ApplicationWindow {
     property string currentNote: ""
     property bool configurationReady: false
     property alias vaultPath: persistedSettings.vaultPath
+    property alias registeredVaults: persistedSettings.registeredVaults
+    property alias openOnLaunchPath: persistedSettings.openOnLaunchPath
     property alias autoSave: persistedSettings.autoSave
     property alias saveDelay: persistedSettings.saveDelay
     property alias showUnsupportedFiles: persistedSettings.showUnsupportedFiles
@@ -34,6 +36,8 @@ ApplicationWindow {
         synchronous: true
 
         property string vaultPath: ""
+        property string registeredVaults: "[]"
+        property string openOnLaunchPath: ""
         property bool autoSave: false
         property int saveDelay: 3000
         property bool showUnsupportedFiles: false
@@ -99,7 +103,7 @@ ApplicationWindow {
         }
     }
 
-    initialPage: vaultBrowserPageFactory
+    initialPage: vaultsPageFactory
     cover: Component {
         CoverPage {
             locationText: app.currentNote.length ? app.currentNote
@@ -110,10 +114,24 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
-        if (persistedSettings.vaultPath.length) {
-            if (vault.setVaultPath(persistedSettings.vaultPath))
-                persistedSettings.vaultPath = vault.vaultPath
-        } else {
+        var paths = []
+        try { paths = JSON.parse(persistedSettings.registeredVaults) }
+        catch (error) { paths = [] }
+        if (!paths.length && persistedSettings.vaultPath.length) {
+            paths.push(persistedSettings.vaultPath)
+            persistedSettings.openOnLaunchPath = persistedSettings.vaultPath
+        }
+        persistedSettings.registeredVaults = JSON.stringify(paths)
+        if (paths.length === 1 && vault.setVaultPath(paths[0])) {
+            persistedSettings.vaultPath = vault.vaultPath
+            pageStack.push(vaultBrowserPageFactory, { applicationWindow: app,
+                vaultBrowserPageComponent: vaultBrowserPageFactory })
+        } else if (persistedSettings.openOnLaunchPath.length
+                && vault.setVaultPath(persistedSettings.openOnLaunchPath)) {
+            persistedSettings.vaultPath = vault.vaultPath
+            pageStack.push(vaultBrowserPageFactory, { applicationWindow: app,
+                vaultBrowserPageComponent: vaultBrowserPageFactory })
+        } else if (!persistedSettings.vaultPath.length) {
             persistedSettings.vaultPath = vault.vaultPath
         }
 
@@ -128,6 +146,11 @@ ApplicationWindow {
     Component {
         id: notePage
         NotePage {}
+    }
+
+    Component {
+        id: vaultsPageFactory
+        VaultsPage { applicationWindow: app; vaultBrowserPageComponent: vaultBrowserPageFactory }
     }
 
     Component {

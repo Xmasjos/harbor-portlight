@@ -46,6 +46,7 @@ DISTFILES += qml/harbour-portlight.qml \
     qml/components/SourceNoteEditor.qml \
     qml/components/WebNoteEditor.qml \
     qml/pages/VaultBrowserPage.qml \
+    qml/pages/VaultsPage.qml \
     qml/pages/NotePage.qml \
     qml/pages/ImagePage.qml \
     qml/pages/SettingsPage.qml \

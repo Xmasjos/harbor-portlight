@@ -24,14 +24,6 @@ Page {
             width: settingsPage.width
             PageHeader { title: "Settings" }
 
-            SectionHeader { text: "Vault" }
-            ValueButton {
-                width: parent.width
-                label: "Vault folder"
-                value: vault.vaultPath
-                onClicked: pageStack.push(folderPicker)
-            }
-
             SectionHeader { text: "Quick notes" }
             ValueButton {
                 width: parent.width
@@ -69,20 +61,6 @@ Page {
             }
         }
         VerticalScrollDecorator {}
-    }
-
-    Component {
-        id: folderPicker
-        FolderPickerDialog {
-            title: "Choose vault folder"
-            onAccepted: {
-                if (!vault.setVaultPath(selectedPath)) {
-                    settingsPage.statusText = "Choose an accessible folder"
-                } else {
-                    settingsPage.applicationWindow.vaultPath = vault.vaultPath
-                }
-            }
-        }
     }
 
     Component {

@@ -67,14 +67,16 @@ function parseInlineDestination(value) {
     return { destination: match[1], title: match[2] || "" }
 }
 
-function resolveDestination(destination, baseFolder) {
+function resolveDestination(destination, baseFolder, resolveVaultPath) {
     if (!destination) return ""
     destination = destination.replace(/\\([()[\]{}])/g, "$1")
 
-    if (/^(?:https?:|mailto:|tel:|file:|#)/i.test(destination))
+    if (/^(?:https?:|mailto:|tel:|#)/i.test(destination))
         return destination
+    if (/^[a-z][a-z0-9+.-]*:/i.test(destination))
+        return ""
 
-    if (!baseFolder) return destination
+    if (!baseFolder) return resolveVaultPath ? resolveVaultPath(destination) : destination
     var folder = baseFolder.replace(/\/+$/, "")
     var relative = destination.replace(/^\.?\//, "")
     var parts = (folder + "/" + relative).split("/")
@@ -87,10 +89,11 @@ function resolveDestination(destination, baseFolder) {
             normalized.push(parts[i])
         }
     }
-    return "file://" + "/" + normalized.join("/")
+    var relativePath = normalized.join("/")
+    return resolveVaultPath ? resolveVaultPath(relativePath) : relativePath
 }
 
-function matchInlineLink(source, start, references, baseFolder) {
+function matchInlineLink(source, start, references, baseFolder, resolveVaultPath) {
     var image = source.substr(start, 2) === "!["
     var prefixLength = image ? 2 : 1
     if (source.charAt(start) !== (image ? "!" : "["))
@@ -136,12 +139,12 @@ function matchInlineLink(source, start, references, baseFolder) {
         end: cursor,
         image: image,
         label: label,
-        destination: resolveDestination(destination, baseFolder),
+        destination: resolveDestination(destination, baseFolder, resolveVaultPath),
         title: title
     }
 }
 
-function render(source, documentSource, baseFolder) {
+function render(source, documentSource, baseFolder, resolveVaultPath) {
     var references = collectReferenceDefinitions(documentSource || source)
     source = removeReferenceDefinitions(source)
     var output = ""
@@ -186,7 +189,7 @@ function render(source, documentSource, baseFolder) {
             }
         }
 
-        var link = matchInlineLink(source, i, references, baseFolder)
+        var link = matchInlineLink(source, i, references, baseFolder, resolveVaultPath)
         if (link) {
             flushPlain()
             if (link.image) {

@@ -34,7 +34,9 @@ Item {
     }
 
     function renderPreviewInline(source) {
-        return InlineMarkdown.render(source, sourceText, noteFolder(notePath))
+        return InlineMarkdown.render(source, sourceText, noteFolder(notePath), function(path) {
+            return vault.imageUrl(path)
+        })
     }
 
     function insertedNewlinePosition(previous, current, cursor) {
